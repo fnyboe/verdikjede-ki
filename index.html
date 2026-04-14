@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Verdikjede KI-analyse</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#F8FAFC;color:#1E293B}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  select{appearance:auto}
+  textarea,input{font-family:'DM Sans',sans-serif}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState, useEffect, useRef, useMemo} = React;
+
+// ════════ shared/api.js ════════
+// ── API ──────────────────────────────────────────────────────────────
+async function callAI(prompt, file) {
+  const body = { prompt };
+  if (file) body.file = { base64: file.base64, type: file.type, isImage: file.isImage, isPdf: file.isPdf };
+
+  const res = await fetch('/.netlify/functions/ai', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || 'HTTP ' + res.status);
+  return data.text || '';
+}
+
+function parseJSON(text) {
+  const clean = text.replace(/```json|```/g, '').trim();
+  const m = clean.match(/\{[\s\S]+\}|\[[\s\S]+\]/);
+  return JSON.parse(m ? m[0] : clean);
+}
+
+
+// ════════ shared/constants.js ════════
+// ── Constants ────────────────────────────────────────────────────────
+const DIMS = [
+  {key:'operational', label:'Potensial', tip:'Variabler:\n• Volum (antall transaksjoner/hendelser)\n• Frekvens (daglig, ukentlig, sporadisk)\n• Kost per enhet / tidsbruk\n• Grad av manuelt arbeid\n👉 Høy score = godt automasjonskandidatur'},
+  {key:'process', label:'Prosesskarakter', tip:'Variabler:\n• Regelbasert vs. skjønnsbasert\n• Variasjon i input\n• Standardisering av prosess\n• Antall unntak\n👉 Mer struktur = lettere AI/automatisering'},
+  {key:'data', label:'Data', tip:'Variabler:\n• Finnes data allerede?\n• Datakvalitet (komplett, korrekt, historisk)\n• Digital vs. analog input\n• Datatilgang på tvers av systemer\n👉 Uten data → ikke AI'},
+  {key:'risk', label:'Risiko', tip:'Variabler:\n• Konsekvens av feil\n• Regulatorisk sensitivitet\n• Etisk / tillitsmessig risiko\n• Kunde- eller sikkerhetspåvirkning\n👉 Høy score = lav risiko'},
+  {key:'change', label:'Endring', tip:'Variabler:\n• Antall roller involvert\n• Fagforening / compliance\n• Kompetansegap\n• Avhengighet til andre initiativ\n👉 Høy score = lav organisatorisk motstand'},
+];
+
+const BXT_CATS = [
+  {key:'strategic', label:'SAMSVAR MED MÅL', color:'#6366F1', items:[
+    {key:'alignment', label:'Strategisk samsvar', tip:'1: Inget samsvar\n3: Middels\n5: Høyt samsvar med støtte på styrenivå'}
+  ]},
+  {key:'business', label:'FORRETNINGSEFFEKT', color:'#3B82F6', items:[
+    {key:'biz_strategy', label:'Samsvar med strategi',    tip:'1: Verdi ikke forstått\n3: Middels\n5: Direkte bidrag til strategiske prioriteringer'},
+    {key:'biz_value',    label:'Forretningsmessig verdi', tip:'1: Verdi ikke forstått\n3: Målbar effekt på kost/kvalitet\n5: Betydelig og skalerbar effekt'},
+    {key:'biz_timeline', label:'Tidsramme for endring',   tip:'1: Lang og høy påvirkning\n3: Moderat endring\n5: Kort og lav påvirkning'},
+  ]},
+  {key:'experience', label:'BRUKEROPPLEVELSE', color:'#10B981', items:[
+    {key:'exp_personas',   label:'Brukergrupper',    tip:'1: Uklart hvem som påvirkes\n3: Kjente brukergrupper\n5: Tydelige personas med dokumenterte behov'},
+    {key:'exp_value',      label:'Verdi for brukere', tip:'1: Liten eller ukjent\n3: Målbar forbedring\n5: Stor og umiddelbar verdi'},
+    {key:'exp_resistance', label:'Endringsmotstand',  tip:'1: Høy motstand\n3: Moderat motstand\n5: Lav motstand, minimal påvirkning'},
+  ]},
+  {key:'tech', label:'GJENNOMFØRBARHET', color:'#F59E0B', items:[
+    {key:'tech_risk',     label:'Implementeringsrisiko', tip:'1: Høy risiko\n3: Kjente risikoer med tiltak\n5: Lav risiko, godt forstått'},
+    {key:'tech_security', label:'Sikkerhetstiltak',      tip:'1: Sikkerhetskrav uklare\n3: Standard tiltak tilstrekkelig\n5: Robust sikkerhetsarkitektur'},
+    {key:'tech_fit',      label:'KI/LLM passer?',        tip:'1: Dårlig match\n3: Delvis match, tilpasning nødvendig\n5: Sterk match, teknologi dekker behovet'},
+  ]},
+];
+
+const STRATS = {
+  collaborative:{title:'Samarbeidsvillig økosystem',sub:'Bruk nettverket',color:'#3B82F6',bg:'#DBEAFE',
+    desc:'Begrenset kontroll og mange teknologier. Bygg partnerskap og delta i teknologi-økosystemer.',
+    actions:['Kartlegg bransje-økosystemer','Prioriter åpne API-er','Bygg integrasjonskompetanse','Samarbeid med partnere','Unngå leverandør-innlåsing']},
+  platform:{title:'Plattformlederskap',sub:'Skap normene',color:'#8B5CF6',bg:'#EDE9FE',
+    desc:'Høy kontroll og mange teknologier. Bygg intern KI-plattform som setter standarden.',
+    actions:['Bygg intern KI-plattform','Invester i datainfrastruktur','Sett teknologistandarder','Rekrutter KI-kompetanse','Driv bransjeinnovasjon']},
+  focused:{title:'Fokusert differensiering',sub:'Spiss fortrinnet',color:'#F59E0B',bg:'#FEF3C7',
+    desc:'Begrenset kontroll og få teknologier. Spiss KI mot høyverdiprosesser.',
+    actions:['Finn 2-3 kjerneprosesser','Kjøp SaaS for standard','Fokuser på domeneforståelse','Start med pilotprosjekter','Bruk nisjeverktøy']},
+  vertical:{title:'Vertikal integrering',sub:'Koble maskineriet',color:'#10B981',bg:'#D1FAE5',
+    desc:'Høy kontroll og få teknologier. End-to-end KI gjennom hele verdikjeden.',
+    actions:['Bygg helhetlig datapipeline','Automatiser end-to-end','Integrer KI i systemer','Prioriter intern utvikling','Mål verdi på tvers']},
+};
+
+// ════════ shared/helpers.js ════════
+// ── Helpers ──────────────────────────────────────────────────────────
+function wAvg(scores, weights) {
+  let s=0,t=0;
+  DIMS.forEach(d=>{const w=weights[d.key]??20; s+=(scores[d.key]||3)*w; t+=w;});
+  return t>0?Math.round(s/t*10)/10:0;
+}
+
+function getColor(score,min,max){
+  if(max===min) return {bg:'#FEF3C7',text:'#92400E',dot:'#F59E0B',level:'Middels'};
+  const r=(score-min)/(max-min);
+  if(r>=0.66) return {bg:'#D1FAE5',text:'#065F46',dot:'#10B981',level:'Høy'};
+  if(r>=0.33) return {bg:'#FEF3C7',text:'#92400E',dot:'#F59E0B',level:'Middels'};
+  return {bg:'#FEE2E2',text:'#991B1B',dot:'#EF4444',level:'Lav'};
+}
+
+function bxtAgg(entry={}) {
+  const S=BXT_CATS.filter(c=>c.key==='strategic'||c.key==='business').flatMap(c=>c.items);
+  const F=BXT_CATS.filter(c=>c.key==='experience'||c.key==='tech').flatMap(c=>c.items);
+  const sA=S.reduce((a,it)=>a+(entry[it.key]??3),0)/S.length;
+  const fA=F.reduce((a,it)=>a+(entry[it.key]??3),0)/F.length;
+  return {sA:Math.round(sA*10)/10, fA:Math.round(fA*10)/10, total:Math.round((sA+fA)/2*10)/10};
+}
+
+
+// ════════ shared/ui.js ════════
+// ── UI primitives ────────────────────────────────────────────────────
+function WeightTotal({weights}){
+  const t=DIMS.reduce((s,d)=>s+(weights[d.key]??20),0);
+  return <span style={{fontSize:12,fontWeight:700,textAlign:'center',color:t===100?'#10B981':'#EF4444'}}>{t}%</span>;
+}
+
+function Dot({color,size=12}){
+  return <span style={{display:'inline-block',width:size,height:size,borderRadius:'50%',backgroundColor:color,flexShrink:0}}/>;
+}
+
+function Tooltip({label, tip, children}){
+  const [show,setShow]=useState(false);
+  const [pos,setPos]=useState({x:0,y:0});
+  return <span style={{position:'relative',cursor:'help'}}
+    onMouseEnter={e=>{const r=e.currentTarget.getBoundingClientRect();setPos({x:r.left,y:r.bottom});setShow(true);}}
+    onMouseLeave={()=>setShow(false)}>
+    <span style={{borderBottom:'1.5px dotted #94A3B8'}}>{children}</span>
+    {show&&<div style={{position:'fixed',left:Math.min(pos.x,window.innerWidth-320),top:pos.y+6,zIndex:9999,width:300,background:'#1E293B',color:'#F1F5F9',borderRadius:10,padding:'12px 16px',fontSize:12,lineHeight:1.6,boxShadow:'0 8px 32px rgba(0,0,0,0.3)',pointerEvents:'none'}}>
+      <div style={{fontWeight:800,fontSize:13,color:'#10B981',marginBottom:6,textAlign:'center'}}>{label}</div>
+      {tip.split('\n').map((l,i)=><div key={i} style={{color:l.startsWith('👉')?'#10B981':'#F1F5F9',fontWeight:l.startsWith('👉')?700:400}}>{l}</div>)}
+    </div>}
+  </span>;
+}
+
+function Btn({onClick,disabled,primary,children,style={}}){
+  return <button onClick={onClick} disabled={disabled} style={{padding:'10px 24px',border:primary?'none':'2px solid #E2E8F0',borderRadius:10,background:primary?(disabled?'#CBD5E1':'#1E293B'):'transparent',color:primary?'#F8FAFC':'#64748B',cursor:disabled?'not-allowed':'pointer',fontSize:14,fontWeight:700,...style}}>{children}</button>;
+}
+
+function BottomNav({onBack,onNext}){
+  return <div style={{display:'flex',justifyContent:'space-between',marginTop:32,paddingTop:20,borderTop:'2px solid #E2E8F0'}}>
+    {onBack?<Btn onClick={onBack}>← Tilbake</Btn>:<div/>}
+    {onNext?<Btn onClick={onNext} primary>Neste →</Btn>:<div/>}
+  </div>;
+}
+
+// ── StepIndicator ────────────────────────────────────────────────────
+function StepIndicator({current,onStep}){
+  const labels=[['Definér','verdikjedesteg'],['Definér prosessteg','— vurder objektivt'],['Vurder prosessteg','subjektivt'],['Vurder','oppgave'],['Strategi for','implementering']];
+  return <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+    {labels.map(([t,s],i)=>{
+      const active=i===current,past=i<current;
+      return <div key={i} style={{display:'flex',alignItems:'center',gap:6}}>
+        <div onClick={()=>onStep(i)} style={{width:30,height:30,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,background:active?'#10B981':past?'#1E293B':'#E2E8F0',color:active?'#fff':past?'#F8FAFC':'#94A3B8',cursor:'pointer',boxShadow:active?'0 0 0 3px #10B98144':'none'}}>{i+1}</div>
+        <span onClick={()=>onStep(i)} style={{fontSize:12,fontWeight:active?800:past?600:400,color:active?'#10B981':past?'#1E293B':'#94A3B8',cursor:'pointer',lineHeight:1.2}}>{t}<br/><span style={{fontSize:10,opacity:0.7}}>{s}</span></span>
+        {i<4&&<div style={{width:28,height:2,background:current>i?'#1E293B':'#E2E8F0'}}/>}
+      </div>;
+    })}
+  </div>;
+}
+
+
+// ════════ screens/Screen1.js ════════
+// ── Screen 1: Definér verdikjedesteg ─────────────────────────────────
+function Step1({steps, setSteps, setProcessData, logoData, setLogoData, onNext}) {
+  const [desc,    setDesc]    = useState('');
+  const [url,     setUrl]     = useState('');
+  const [file,    setFile]    = useState(null);  // {name, type, base64, isImage, isPdf, preview}
+  const [busy,    setBusy]    = useState(false);
+  const [done,    setDone]    = useState(false);
+  const [err,     setErr]     = useState('');
+
+  const handleFile = e => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result.split(',')[1];
+      const isImage = f.type.startsWith('image/');
+      const isPdf   = f.type === 'application/pdf';
+      setFile({ name:f.name, type:f.type, base64, isImage, isPdf, preview: isImage ? reader.result : null });
+    };
+    reader.readAsDataURL(f);
+  };
+
+  const generate = async () => {
+    setBusy(true); setErr('');
+    try {
+      const ctx = [url && `Nettside: ${url}`, desc].filter(Boolean).join('\n') || 'Generisk virksomhet';
+      const fileNote = file ? `\nVedlegg: ${file.name} — analyser innholdet og bruk det til å identifisere verdikjedesteg og prosessteg.` : '';
+      const prompt = `${ctx}${fileNote}\n\nLag en verdikjedeanalyse som dekker hele verdikjeden. Returner KUN JSON:\n{"steps":["Steg1","Steg2","Steg3","Steg4","Steg5"],"vc_0":[{"name":"Navn","scores":{"operational":4,"process":3,"data":5,"risk":4,"change":2}},{"name":"Navn2","scores":{"operational":2,"process":4,"data":3,"risk":5,"change":3}},{"name":"Navn3","scores":{"operational":3,"process":2,"data":4,"risk":3,"change":4}}],"vc_1":[{"name":"Navn","scores":{"operational":3,"process":4,"data":2,"risk":4,"change":3}},{"name":"Navn2","scores":{"operational":4,"process":3,"data":5,"risk":2,"change":4}},{"name":"Navn3","scores":{"operational":2,"process":5,"data":3,"risk":4,"change":2}}]}\n\nVIKTIG: Lag så mange steps som er naturlig for denne verdikjeden. Lag vc_0 til vc_N for ALLE steps. Hver vc skal ha 3 prosessteg. Scorer 1-5 variert og realistisk. Ingen annen tekst.`;
+      const raw    = await callAI(prompt, file);
+      const parsed = parseJSON(raw);
+      if (!parsed?.steps?.length) throw new Error('Ingen steps i svar: ' + raw.slice(0,80));
+      setSteps(parsed.steps.slice(0, 8));
+      const procs = {};
+      let i = 0;
+      while (parsed['vc_' + i]) { procs['vc_' + i] = parsed['vc_' + i]; i++; }
+      if (Object.keys(procs).length) setProcessData(procs);
+      setDone(true);
+    } catch (e) {
+      setErr('Feil: ' + (e.message || String(e)));
+    }
+    setBusy(false);
+  };
+
+  const canGenerate = desc.trim() || url.trim() || file;
+  const canProceed  = steps.every(s => s.trim());
+
+  return <div style={{animation:'fadeIn 0.4s ease'}}>
+    <h2 style={{fontSize:22,fontWeight:700,color:'#1E293B',marginBottom:4}}>Definér verdikjedesteg</h2>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:24}}>Beskriv virksomheten for å generere forslag til verdikjedesteg, eller legg inn manuelt.</p>
+    <div style={{background:'#F0F9FF',border:'2px solid #BAE6FD',borderRadius:14,padding:20,marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:700,color:'#0C4A6E',marginBottom:12}}>✦ Generer verdikjedesteg med KI</div>
+      <input value={url} onChange={e=>setUrl(e.target.value)} placeholder="Nettside (valgfritt) — f.eks. https://www.havland.no"
+        style={{width:'100%',padding:'10px 14px',border:'2px solid #E0F2FE',borderRadius:10,fontSize:14,outline:'none',marginBottom:10}}/>
+      <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3}
+        placeholder="Beskriv virksomheten kort — f.eks. «Havbruksselskap som produserer atlantisk laks fra rogn til marked, med eget settefiskanlegg, sjøbasert oppdrett, slakteri og eksport til Europa og Asia.»"
+        style={{width:'100%',padding:'10px 14px',border:'2px solid #E0F2FE',borderRadius:10,fontSize:14,outline:'none',resize:'vertical',marginBottom:10}}/>
+
+      {/* File upload */}
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,flexWrap:'wrap'}}>
+        <label style={{padding:'8px 16px',border:'2px dashed #BAE6FD',borderRadius:10,background:'#F0F9FF',color:'#0369A1',fontSize:13,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}>
+          📎 Last opp bilde / dokument
+          <input type="file" accept="image/*,.pdf" onChange={handleFile} style={{display:'none'}}/>
+        </label>
+        {file && <div style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#475569'}}>
+          {file.preview && <img src={file.preview} alt="preview" style={{height:36,borderRadius:6,border:'1px solid #E2E8F0'}}/>}
+          <span style={{fontWeight:500}}>{file.name}</span>
+          <button onClick={()=>setFile(null)} style={{background:'none',border:'none',color:'#EF4444',cursor:'pointer',fontSize:14,fontWeight:700}}>✕</button>
+        </div>}
+      </div>
+
+      <button onClick={generate} disabled={busy}
+        style={{padding:'10px 24px',border:'none',borderRadius:10,background:busy?'#CBD5E1':'#0EA5E9',color:'#fff',cursor:busy?'not-allowed':'pointer',fontSize:14,fontWeight:700}}>
+        {busy ? 'Genererer...' : done ? '✦ Generer på nytt' : '✦ Generer verdikjedesteg'}
+      </button>
+      {err && <div style={{marginTop:10,padding:'10px 14px',background:'#FEE2E2',border:'1.5px solid #EF4444',borderRadius:8,fontSize:13,color:'#991B1B'}}>⚠ {err}</div>}
+    </div>
+    <div style={{fontSize:14,fontWeight:700,color:'#475569',marginBottom:10}}>Verdikjedesteg (2–8 steg)</div>
+    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+      {steps.map((s,i) => (
+        <div key={i} style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{width:28,height:28,borderRadius:8,background:'#F1F5F9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,color:'#64748B',flexShrink:0}}>{i+1}</span>
+          <input value={s} onChange={e=>{const c=[...steps];c[i]=e.target.value;setSteps(c);}} placeholder={`Verdikjedesteg ${i+1}`}
+            style={{flex:1,padding:'10px 14px',border:'2px solid #E2E8F0',borderRadius:10,fontSize:15,outline:'none',background:'#FAFBFC'}}/>
+          {steps.length > 2 && <button onClick={()=>setSteps(steps.filter((_,j)=>j!==i))}
+            style={{width:32,height:32,borderRadius:8,border:'none',background:'#FEE2E2',color:'#991B1B',cursor:'pointer',fontSize:18}}>×</button>}
+        </div>
+      ))}
+    </div>
+    {steps.length < 8 && <button onClick={()=>setSteps([...steps,''])}
+      style={{marginTop:12,padding:'10px 20px',border:'2px dashed #CBD5E1',borderRadius:10,background:'transparent',color:'#64748B',cursor:'pointer',fontSize:14,fontWeight:600}}>+ Legg til steg</button>}
+
+    {/* Logo upload */}
+    <div style={{marginTop:28,background:'#FAFBFC',border:'2px solid #E2E8F0',borderRadius:14,padding:'16px 20px'}}>
+      <div style={{fontSize:13,fontWeight:700,color:'#475569',marginBottom:10}}>Bedriftslogo (vises på rapportens forside)</div>
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <label style={{padding:'8px 16px',border:'2px dashed #CBD5E1',borderRadius:9,background:'#fff',color:'#64748B',fontSize:12,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6}}>
+          🖼 Last opp logo
+          <input type="file" accept="image/*" onChange={e=>{
+            const f=e.target.files?.[0]; if(!f) return;
+            const r=new FileReader();
+            r.onload=()=>setLogoData(r.result);
+            r.readAsDataURL(f);
+          }} style={{display:'none'}}/>
+        </label>
+        {logoData && <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <img src={logoData} alt="logo" style={{height:40,maxWidth:120,objectFit:'contain',borderRadius:6,border:'1px solid #E2E8F0'}}/>
+          <button onClick={()=>setLogoData(null)} style={{background:'none',border:'none',color:'#EF4444',cursor:'pointer',fontSize:14,fontWeight:700}}>✕</button>
+        </div>}
+      </div>
+    </div>
+
+    <BottomNav onNext={canProceed ? onNext : null}/>
+  </div>;
+}
+
+// ════════ screens/Screen2.js ════════
+// ── Screen 2: Objektiv vurdering ─────────────────────────────────────
+function Step2({vcSteps,processData,setProcessData,includedVC,setIncludedVC,weights,setWeights,customDims,setCustomDims,onBack,onNext}){
+  const [activeVC,setActiveVC]=useState(0);
+  const [addingVar,setAddingVar]=useState(false);
+  const [varName,setVarName]=useState('');
+  const [varTip,setVarTip]=useState('');
+
+  const allDims=[...DIMS,...(customDims||[])];
+
+  const setProcs=(vi,fn)=>setProcessData(p=>{const c=JSON.parse(JSON.stringify(p));c['vc_'+vi]=fn(c['vc_'+vi]||[]);return c;});
+  const addProc=vi=>setProcs(vi,ps=>ps.length<8?[...ps,{name:'',scores:Object.fromEntries(allDims.map(d=>[d.key,3]))}]:ps);
+  const delProc=(vi,pi)=>setProcs(vi,ps=>ps.filter((_,i)=>i!==pi));
+  const setName=(vi,pi,v)=>setProcs(vi,ps=>{const c=[...ps];c[pi]={...c[pi],name:v};return c;});
+  const setScore=(vi,pi,key,v)=>setProcs(vi,ps=>{const c=JSON.parse(JSON.stringify(ps));c[pi].scores[key]=v;return c;});
+
+  const allScores=useMemo(()=>{const s=[];vcSteps.forEach((_,vi)=>(processData['vc_'+vi]||[]).forEach(p=>s.push(wAvg(p.scores,weights))));return s;},[processData,weights,customDims]);
+  const vcScores=useMemo(()=>vcSteps.map((_,vi)=>{const ps=processData['vc_'+vi]||[];return ps.length?Math.round(ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length*10)/10:0;}),[processData,weights,customDims]);
+  const pMin=allScores.length?Math.min(...allScores):0, pMax=allScores.length?Math.max(...allScores):5;
+  const vMin=vcScores.filter(s=>s>0).length?Math.min(...vcScores.filter(s=>s>0)):0, vMax=Math.max(...vcScores,0);
+  const curProcs=processData['vc_'+activeVC]||[];
+
+  const addVar=()=>{
+    if(!varName.trim()) return;
+    const key='custom_'+Date.now();
+    setCustomDims(prev=>[...(prev||[]),{key,label:varName.trim(),tip:varTip.trim()||varName.trim()}]);
+    setWeights(w=>({...w,[key]:10}));
+    setVarName(''); setVarTip(''); setAddingVar(false);
+  };
+
+  const cols=`190px repeat(${allDims.length},1fr) 80px 32px`;
+
+  return <div style={{animation:'fadeIn 0.4s ease'}}>
+    <h2 style={{fontSize:22,fontWeight:700,color:'#1E293B',marginBottom:4}}>Vurder prosessteg</h2>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:8}}>Velg et verdikjedesteg, legg inn prosessteg og gi score (1–5) på hver dimensjon.</p>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:20}}>De som anbefales å ta med videre er de med KI-egnethet over 4 i snitt og 3 eller mer på datatilgjengelighet. Disse er markert med tykk ramme under oppsummering nederst. For å ta med andre prosessteg, klikk på dem i bunnen.</p>
+
+    <div style={{display:'flex',gap:6,marginBottom:20,flexWrap:'wrap'}}>
+      {vcSteps.map((name,i)=>{
+        const sc=vcScores[i],col=sc>0?getColor(sc,vMin,vMax):null,active=i===activeVC;
+        return <button key={i} onClick={()=>setActiveVC(i)} style={{padding:'8px 16px',border:active?'2px solid #1E293B':'2px solid #E2E8F0',borderRadius:10,background:active?'#1E293B':'#FAFBFC',color:active?'#F8FAFC':'#475569',cursor:'pointer',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',gap:6}}>
+          {name} {col&&<Dot color={active?'#F8FAFC':col.dot} size={9}/>} {sc>0&&<span style={{fontSize:10,opacity:0.6}}>{sc}</span>}
+        </button>;
+      })}
+    </div>
+
+    <div style={{background:'#FAFBFC',borderRadius:14,border:'2px solid #E2E8F0',overflow:'hidden'}}>
+      <div style={{display:'grid',gridTemplateColumns:cols,gap:'0 4px',padding:'8px 12px 0',background:'#F1F5F9',alignItems:'end'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#475569',paddingBottom:4}}>Prosessteg</span>
+        {allDims.map(d=><span key={d.key} style={{fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',lineHeight:1.3}}>
+          <Tooltip label={d.label} tip={d.tip}>{d.label}</Tooltip>
+        </span>)}
+        <span style={{fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',lineHeight:1.3}}>KI-egnethet</span>
+        <span/>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:cols,gap:'0 4px',padding:'4px 12px 8px',background:'#F1F5F9',borderBottom:'2px solid #E2E8F0',alignItems:'center'}}>
+        <span/>
+        {allDims.map(d=><div key={d.key} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:2}}>
+          <input type="number" min={0} max={100} value={weights[d.key]??20} onChange={e=>setWeights(w=>({...w,[d.key]:Math.max(0,Math.min(100,+e.target.value||0))}))}
+            style={{width:34,padding:'2px',border:'1.5px solid #E2E8F0',borderRadius:5,fontSize:11,textAlign:'center',outline:'none'}}/>
+          <span style={{fontSize:9,color:'#94A3B8'}}>%</span>
+        </div>)}
+        <WeightTotal weights={weights}/>
+        <span/>
+      </div>
+      {curProcs.length===0&&<div style={{padding:'28px',textAlign:'center',color:'#94A3B8',fontSize:14}}>Ingen prosessteg ennå. Klikk «+ Legg til».</div>}
+      {curProcs.map((proc,pi)=>{
+        const sc=wAvg(proc.scores,weights),col=allScores.length>1?getColor(sc,pMin,pMax):getColor(sc,1,5);
+        return <div key={pi} style={{display:'grid',gridTemplateColumns:cols,gap:'0 4px',padding:'8px 12px',borderBottom:'1px solid #F1F5F9',alignItems:'center'}}>
+          <input value={proc.name} onChange={e=>setName(activeVC,pi,e.target.value)} placeholder={'Prosessteg '+(pi+1)}
+            style={{border:'1.5px solid #E2E8F0',borderRadius:8,padding:'5px 8px',fontSize:12,outline:'none',background:'#fff',width:'100%'}}/>
+          {allDims.map(d=><div key={d.key} style={{display:'flex',justifyContent:'center'}}>
+            <select value={proc.scores[d.key]||3} onChange={e=>setScore(activeVC,pi,d.key,+e.target.value)}
+              style={{width:48,padding:'5px 2px',border:'1.5px solid #E2E8F0',borderRadius:7,fontSize:13,textAlign:'center',outline:'none',background:'#fff',cursor:'pointer',fontWeight:600}}>
+              {[1,2,3,4,5].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>)}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:5}}>
+            <Dot color={col.dot}/><span style={{fontSize:13,fontWeight:700,color:col.text}}>{sc}</span>
+          </div>
+          <button onClick={()=>delProc(activeVC,pi)} style={{width:26,height:26,borderRadius:7,border:'none',background:'#FEE2E2',color:'#991B1B',cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+        </div>;
+      })}
+    </div>
+
+    <div style={{display:'flex',gap:10,marginTop:10,flexWrap:'wrap',alignItems:'center'}}>
+      <button onClick={()=>addProc(activeVC)} style={{padding:'9px 18px',border:'2px dashed #CBD5E1',borderRadius:10,background:'transparent',color:'#64748B',cursor:'pointer',fontSize:13,fontWeight:600}}>+ Legg til prosessteg</button>
+      {!addingVar&&(customDims||[]).length<3&&
+        <button onClick={()=>setAddingVar(true)} style={{padding:'8px 16px',border:'1.5px dashed #A5B4FC',borderRadius:8,background:'#EEF2FF',color:'#4F46E5',cursor:'pointer',fontSize:12,fontWeight:600}}>
+          + Legg til variabel ({3-(customDims||[]).length} igjen)
+        </button>
+      }
+      {addingVar&&<div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+        <input value={varName} onChange={e=>setVarName(e.target.value)} placeholder="Variabelnavn" autoFocus
+          style={{padding:'6px 10px',border:'1.5px solid #A5B4FC',borderRadius:6,fontSize:12,width:140,outline:'none'}}/>
+        <input value={varTip} onChange={e=>setVarTip(e.target.value)} placeholder="Beskrivelse (tooltip)"
+          style={{padding:'6px 10px',border:'1.5px solid #E2E8F0',borderRadius:6,fontSize:12,width:200,outline:'none'}}/>
+        <button onClick={addVar} disabled={!varName.trim()} style={{padding:'6px 12px',border:'none',borderRadius:6,background:varName.trim()?'#4F46E5':'#CBD5E1',color:'#fff',fontSize:12,fontWeight:700,cursor:varName.trim()?'pointer':'not-allowed'}}>✓ Legg til</button>
+        <button onClick={()=>{setAddingVar(false);setVarName('');setVarTip('');}} style={{padding:'6px 10px',border:'1.5px solid #E2E8F0',borderRadius:6,background:'#fff',color:'#64748B',fontSize:12,cursor:'pointer'}}>Avbryt</button>
+      </div>}
+    </div>
+
+    {vcScores.some(s=>s>0)&&<div style={{marginTop:28}}>
+      <h3 style={{fontSize:17,fontWeight:700,color:'#1E293B',marginBottom:14}}>Oppsummering — klikk for å inkludere/fjerne</h3>
+      <div style={{display:'grid',gridTemplateColumns:'repeat('+Math.min(vcSteps.length,5)+',1fr)',gap:10}}>
+        {vcSteps.map((name,i)=>{
+          const sc=vcScores[i],ps=processData['vc_'+i]||[];
+          const col=sc>0?getColor(sc,vMin,vMax):{bg:'#F1F5F9',text:'#94A3B8',dot:'#CBD5E1',level:'—'};
+          const avg=ps.length?ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length:0;
+          const dAvg=ps.length?ps.reduce((s,p)=>s+(p.scores.data||3),0)/ps.length:0;
+          const q=avg>=4&&dAvg>=3&&ps.length>0;
+          const incl=includedVC['vc_'+i]!==undefined?includedVC['vc_'+i]:q;
+          return <div key={i} onClick={()=>setIncludedVC(v=>({...v,['vc_'+i]:!incl}))}
+            style={{background:incl?col.bg:'#F8FAFC',borderRadius:12,padding:'16px 12px',textAlign:'center',border:q?'4px solid '+col.dot:incl?'2px solid '+col.dot+'88':'2px solid '+col.dot+'33',cursor:'pointer',opacity:incl?1:0.5}}>
+            <Dot color={incl?col.dot:'#CBD5E1'} size={14}/>
+            <div style={{fontSize:24,fontWeight:800,color:col.text,margin:'6px 0 2px'}}>{sc||'—'}</div>
+            <div style={{fontSize:12,fontWeight:700,color:col.text,overflowWrap:'break-word'}}>{name}</div>
+            <div style={{fontSize:10,color:incl?col.text:'#94A3B8',opacity:0.7,marginTop:2}}>{ps.length} steg · {col.level}</div>
+            <div style={{marginTop:7,padding:'2px 8px',borderRadius:5,display:'inline-block',fontSize:9,fontWeight:700,background:incl?'#D1FAE5':'#E2E8F0',color:incl?'#065F46':'#64748B'}}>{incl?'✓ Inkludert':'Ikke inkludert'}</div>
+          </div>;
+        })}
+      </div>
+    </div>}
+    <BottomNav onBack={onBack} onNext={onNext}/>
+  </div>;
+}
+
+// ════════ screens/Screen3.js ════════
+// ── Screen 3: BXT subjektiv vurdering ────────────────────────────────
+
+function ProsessAccordion({proc, pi, vcIndex, bxtData, setBxtData, isOpen, onToggle, agg, busy}) {
+  const KEY = 'vc_' + vcIndex + '_p_' + pi;
+  const entry = bxtData[KEY] || {};
+  const str  = k => entry[k] || '';
+  const num  = k => entry[k] ?? 3;
+  const save = (k, v) => setBxtData(prev => ({...prev, [KEY]: {...(prev[KEY]||{}), [k]: v}}));
+  const col  = getColor(agg.total, 1, 5);
+
+  return <div style={{border:isOpen?'2px solid #1E293B':'2px solid #E2E8F0',borderRadius:14,overflow:'hidden',background:'#fff'}}>
+    <button onClick={onToggle} style={{width:'100%',padding:'13px 16px',border:'none',background:isOpen?'#1E293B':'#FAFBFC',color:isOpen?'#F8FAFC':'#1E293B',cursor:'pointer',fontSize:14,fontWeight:700,textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+      <span style={{display:'flex',alignItems:'center',gap:8}}>
+        <Dot color={isOpen?'#F8FAFC':col.dot} size={10}/>
+        {proc.name||'Prosessteg '+(pi+1)}
+        {busy&&<span style={{fontSize:11,fontWeight:400,fontStyle:'italic',opacity:0.7}}>✦ Genererer KI-forslag...</span>}
+      </span>
+      <span style={{display:'flex',alignItems:'center',gap:8,fontSize:12}}>
+        <span style={{opacity:0.65}}>S:{agg.sA} G:{agg.fA}</span>
+        <span style={{padding:'2px 8px',borderRadius:6,background:isOpen?'#ffffff22':'#F1F5F9',fontWeight:800}}>{agg.total}</span>
+        <span style={{padding:'2px 8px',borderRadius:6,background:isOpen?'#ffffff22':'#E2E8F0',fontSize:11}}>{isOpen?'Lukk ▲':'Åpne ▼'}</span>
+      </span>
+    </button>
+    {isOpen&&<div style={{padding:'16px 18px'}}>
+      <div style={{marginBottom:18}}>
+        <div style={{fontSize:11,fontWeight:800,color:'#1E293B',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:10,borderBottom:'2px solid #1E293B22',paddingBottom:5}}>Problemstilling, KI-idé og mål</div>
+        <div style={{display:'grid',gridTemplateColumns:'175px 1fr',gap:'8px 12px',alignItems:'start'}}>
+          {[
+            ['problem_desc','Problem som skal løses', busy?'Genererer...':'Hva er utfordringen?'],
+            ['usecase_desc','KI-brukstilfelle',       busy?'Genererer KI-idéer...':'Idé for KI-løsning'],
+            ['business_goal','Forretningsmål',        'Beskriv forretningsmålet'],
+            ['key_results','Nøkkelresultat',          '3-5 målbare nøkkelresultater'],
+            ['responsible','Ansvarlig',               'Rolle, navn, avdeling'],
+          ].map(([k,label,ph])=><React.Fragment key={k}>
+            <span style={{fontSize:13,color:'#475569',fontWeight:600,paddingTop:7}}>{label}</span>
+            <textarea rows={k==='usecase_desc'?3:1} placeholder={ph} value={str(k)} onChange={e=>save(k,e.target.value)}
+              style={{padding:'6px 10px',border:'1.5px solid #E2E8F0',borderRadius:6,fontSize:12,color:'#475569',outline:'none',background:busy&&(k==='problem_desc'||k==='usecase_desc')?'#F0F4FF':'#FAFBFC',width:'100%',resize:'vertical',lineHeight:1.5}}/>
+          </React.Fragment>)}
+        </div>
+      </div>
+      {BXT_CATS.map(cat=><div key={cat.key} style={{marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:cat.color,textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8,borderBottom:'2px solid '+cat.color+'22',paddingBottom:5}}>{cat.label}</div>
+        <div style={{display:'grid',gridTemplateColumns:'175px 1fr 58px',gap:'5px 10px',alignItems:'center'}}>
+          {cat.items.map(item=><React.Fragment key={item.key}>
+            <Tooltip label={item.label} tip={item.tip}><span style={{fontSize:12,color:'#475569'}}>{item.label}</span></Tooltip>
+            <input type="text" placeholder="Kommentar..." value={str(item.key+'_comment')} onChange={e=>save(item.key+'_comment',e.target.value)}
+              style={{padding:'4px 8px',border:'1.5px solid #E2E8F0',borderRadius:6,fontSize:12,outline:'none',background:'#FAFBFC',width:'100%'}}/>
+            <select value={num(item.key)} onChange={e=>save(item.key,+e.target.value)}
+              style={{width:58,padding:'5px 2px',border:'1.5px solid #E2E8F0',borderRadius:7,fontSize:14,textAlign:'center',outline:'none',background:'#fff',cursor:'pointer',fontWeight:600}}>
+              {[1,2,3,4,5].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+          </React.Fragment>)}
+        </div>
+      </div>)}
+    </div>}
+  </div>;
+}
+
+function Step3({vcSteps,processData,bxtData,setBxtData,selectedVC,setSelectedVC,includedVC,includedProcs,setIncludedProcs,weights,onBack,onNext}){
+  const [expanded, setExpanded] = useState(-1);
+  const [busyPi,   setBusyPi]   = useState(-1);
+
+  const vcList = vcSteps.map((name,i)=>{
+    const ps = processData['vc_'+i]||[];
+    if(!ps.length) return null;
+    const avg = ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length;
+    return {name, index:i, score:Math.round(avg*10)/10};
+  }).filter(Boolean);
+
+  const firstIncl = vcList.find(vc=>{
+    const ps = processData['vc_'+vc.index]||[];
+    const avg = ps.length?ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length:0;
+    const dAvg = ps.length?ps.reduce((s,p)=>s+(p.scores?.data||3),0)/ps.length:0;
+    const q = avg>=4&&dAvg>=3;
+    return includedVC['vc_'+vc.index]!==undefined?includedVC['vc_'+vc.index]:q;
+  })?.index ?? vcList[0]?.index ?? 0;
+
+  const activeVC = selectedVC ?? firstIncl;
+  const procs    = processData['vc_'+activeVC]||[];
+  const aggs     = procs.map((_,pi)=>bxtAgg(bxtData['vc_'+activeVC+'_p_'+pi]));
+
+  // ── KI-generering — trigges når accordion åpnes (expanded endres)
+  useEffect(()=>{
+    if(expanded < 0) return;
+    const KEY = 'vc_'+activeVC+'_p_'+expanded;
+    const existing = bxtData[KEY];
+    if(existing?.problem_desc || existing?.usecase_desc) return;
+    const proc = procs[expanded];
+    if(!proc?.name) return;
+    const vcName = vcSteps[activeVC]||'';
+
+    const run = async () => {
+      setBusyPi(expanded);
+      try {
+        const raw = await callAI(
+          'Verdikjedesteg: "'+vcName+'"\nProsessteg: "'+proc.name+'"\n\nReturner KUN JSON:\n{"problem":"Beskriv hovedproblemet konkret. Maks 2 setninger.","ideas":"1. KI-teknologi og forklaring\\n2. KI-teknologi og forklaring\\n3. KI-teknologi og forklaring"}'
+        );
+        const m = raw.match(/\{[\s\S]+\}/);
+        if(!m) throw new Error('Ingen JSON');
+        const d = JSON.parse(m[0]);
+        setBxtData(prev=>({...prev,[KEY]:{...(prev[KEY]||{}),problem_desc:d.problem||'',usecase_desc:d.ideas||''}}));
+      } catch(e) {
+        console.error('generateAIIdeas failed:', e);
+      }
+      setBusyPi(-1);
+    };
+    run();
+  },[expanded]);
+
+  useEffect(()=>{setExpanded(-1);},[activeVC]);
+
+  const isIncl = pi=>{const k=activeVC+'_'+pi;return includedProcs[k]!==undefined?includedProcs[k]:aggs[pi]?.total>=4;};
+
+  return <div style={{animation:'fadeIn 0.4s ease'}}>
+    <h2 style={{fontSize:22,fontWeight:700,color:'#1E293B',marginBottom:4}}>Vurder prosessteg — subjektivt</h2>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:16}}>Her er verdikjedestegene du tok med videre fra objektiv vurdering av KI-egnethet i Steg 2 (med score i parentes).</p>
+
+    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:18}}>
+      {vcList.map(vc=>{
+        const active=vc.index===activeVC;
+        const ps=processData['vc_'+vc.index]||[];
+        const avg=ps.length?ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length:0;
+        const dAvg=ps.length?ps.reduce((s,p)=>s+(p.scores?.data||3),0)/ps.length:0;
+        const q=avg>=4&&dAvg>=3&&ps.length>0;
+        const incl=includedVC['vc_'+vc.index]!==undefined?includedVC['vc_'+vc.index]:q;
+        return <button key={vc.index} onClick={()=>incl&&setSelectedVC(vc.index)}
+          style={{padding:'8px 14px',border:active?'2px solid #1E293B':'2px solid #E2E8F0',borderRadius:10,background:active?'#1E293B':'#FAFBFC',color:active?'#F8FAFC':incl?'#475569':'#CBD5E1',cursor:incl?'pointer':'default',fontSize:13,fontWeight:600,opacity:incl?1:0.4}}>
+          {vc.name} <span style={{opacity:0.6,fontSize:11}}>({vc.score})</span>
+        </button>;
+      })}
+    </div>
+
+    <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:24}}>
+      <p style={{fontSize:14,color:'#475569',lineHeight:1.6}}>Vurder forretningsverdi, brukeropplevelse og teknisk gjennomførbarhet for hvert prosessteg. Alle score skal settes basert på felles forståelse og er en indikasjon på strategisk KI-egnethet for prosessteg, ikke en fasit.</p>
+      <p style={{fontSize:14,color:'#475569',lineHeight:1.6}}>Prosessteg med snitt ≥ 4 anbefales videre — markert med tykk ramme i bunnen. Klikk for å ta med eller fjerne.</p>
+    </div>
+    <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:24}}>
+      {procs.map((proc,pi)=>(
+        <ProsessAccordion key={activeVC+'-'+pi}
+          proc={proc} pi={pi} vcIndex={activeVC}
+          bxtData={bxtData} setBxtData={setBxtData}
+          isOpen={expanded===pi} onToggle={()=>setExpanded(expanded===pi?-1:pi)}
+          agg={aggs[pi]} busy={busyPi===pi}/>
+      ))}
+    </div>
+
+    <h3 style={{fontSize:16,fontWeight:700,color:'#1E293B',marginBottom:12}}>KI-egnethet (indikasjon)</h3>
+    {procs.length>0&&<div style={{background:'#fff',border:'2px solid #E2E8F0',borderRadius:14,padding:'16px',marginBottom:24,overflowX:'auto'}}>
+      {(()=>{
+        const W=560,H=440,PAD=56,PADT=30;
+        const cW=W-PAD*2,cH=H-PAD-PADT;
+        const tx=v=>PAD+(v/5)*cW, ty=v=>PADT+cH-(v/5)*cH;
+        const QS=[
+          {x:1.2,y:4.2,label:'Utforsk videre\n(senere)',color:'#F59E0B',bg:'#FEF3C7',border:'#F59E0B'},
+          {x:3.8,y:4.2,label:'Utfør\noppgaveanalyse',color:'#3B82F6',bg:'#DBEAFE',border:'#3B82F6'},
+          {x:1.2,y:1.2,label:'Sett på vent',color:'#EF4444',bg:'#FEE2E2',border:'#EF4444'},
+          {x:3.8,y:1.2,label:'Inkuber\n(utvikle senere)',color:'#10B981',bg:'#D1FAE5',border:'#10B981'},
+        ];
+        const points=procs.map((_,pi)=>({x:aggs[pi].fA,y:aggs[pi].sA,label:procs[pi].name}));
+        return <svg width={W} height={H} style={{fontFamily:"'DM Sans',sans-serif",overflow:'visible'}}>
+          <rect x={tx(0)} y={ty(5)} width={tx(3)-tx(0)} height={ty(0)-ty(3)} fill="#FEE2E244" rx={4}/>
+          <rect x={tx(3)} y={ty(5)} width={tx(5)-tx(3)} height={ty(3)-ty(5)} fill="#DBEAFE44" rx={4}/>
+          <rect x={tx(0)} y={ty(3)} width={tx(3)-tx(0)} height={ty(0)-ty(3)} fill="#FEE2E233" rx={4}/>
+          <rect x={tx(3)} y={ty(3)} width={tx(5)-tx(3)} height={ty(0)-ty(3)} fill="#D1FAE544" rx={4}/>
+          <line x1={tx(3)} y1={ty(5)} x2={tx(3)} y2={ty(0)} stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="6,4"/>
+          <line x1={tx(0)} y1={ty(3)} x2={tx(5)} y2={ty(3)} stroke="#CBD5E1" strokeWidth={1.5} strokeDasharray="6,4"/>
+          {[1,2,3,4,5].map(v=><g key={v}>
+            <text x={tx(v)} y={ty(0)+16} textAnchor="middle" fontSize={11} fill="#94A3B8">{v}</text>
+            <text x={PAD-10} y={ty(v)+4} textAnchor="end" fontSize={11} fill="#94A3B8">{v}</text>
+          </g>)}
+          <text x={tx(0)} y={ty(0)+16} textAnchor="middle" fontSize={11} fill="#94A3B8">0</text>
+          {QS.map((q,i)=><g key={i}>
+            <rect x={tx(q.x)-52} y={ty(q.y)-16} width={104} height={36} rx={6} fill={q.bg} stroke={q.border} strokeWidth={1.5}/>
+            {q.label.split('\n').map((line,li)=><text key={li} x={tx(q.x)} y={ty(q.y)+li*14} textAnchor="middle" fontSize={10} fontWeight={700} fill={q.color}>{line}</text>)}
+          </g>)}
+          <text x={tx(2.5)} y={H-2} textAnchor="middle" fontSize={12} fontWeight={700} fill="#475569">Grad av gjennomførbarhet</text>
+          <text x={12} y={ty(2.5)} textAnchor="middle" fontSize={12} fontWeight={700} fill="#475569" transform={'rotate(-90,12,'+ty(2.5)+')'}>Grad av strategisk forretningseffekt</text>
+          {points.map((p,i)=><g key={i}>
+            <circle cx={tx(p.x)} cy={ty(p.y)} r={7} fill="#1E293B" stroke="#fff" strokeWidth={2}/>
+            <text x={tx(p.x)+12} y={ty(p.y)+4} fontSize={10} fontWeight={600} fill="#1E293B">{p.label}</text>
+          </g>)}
+        </svg>;
+      })()}
+    </div>}
+
+    <h3 style={{fontSize:16,fontWeight:700,color:'#1E293B',marginBottom:4}}>Prosessteg videre til oppgaveanalyse</h3>
+    <p style={{fontSize:13,color:'#64748B',marginBottom:12}}>Prosessteg med snitt ≥ 4 anbefales videre (markert med tykk ramme). Klikk for å ta med eller fjerne.</p>
+    <div style={{display:'grid',gridTemplateColumns:'repeat('+Math.min(procs.length||1,4)+',1fr)',gap:10,marginBottom:24}}>
+      {procs.map((proc,pi)=>{
+        const agg=aggs[pi],q=agg.total>=4,incl=isIncl(pi),col=getColor(agg.total,1,5);
+        return <div key={pi} onClick={()=>setIncludedProcs(p=>({...p,[activeVC+'_'+pi]:!incl}))}
+          style={{background:incl?col.bg:'#F8FAFC',borderRadius:12,padding:'14px 10px',textAlign:'center',border:q?'4px solid '+col.dot:incl?'2px solid '+col.dot+'66':'2px solid #E2E8F0',cursor:'pointer',opacity:incl?1:0.5}}>
+          <Dot color={incl?col.dot:'#CBD5E1'} size={11}/>
+          <div style={{fontSize:12,fontWeight:700,color:incl?col.text:'#94A3B8',margin:'5px 0 3px',overflowWrap:'break-word'}}>{proc.name}</div>
+          <div style={{fontSize:10,opacity:0.7}}>S:{agg.sA} G:{agg.fA} T:{agg.total}</div>
+          <div style={{marginTop:5,padding:'2px 7px',borderRadius:5,display:'inline-block',fontSize:9,fontWeight:700,background:incl?'#D1FAE5':'#E2E8F0',color:incl?'#065F46':'#64748B'}}>{incl?'✓ Inkludert':'Ikke inkludert'}</div>
+        </div>;
+      })}
+    </div>
+    <BottomNav onBack={onBack} onNext={onNext}/>
+  </div>;
+}
+
+// ════════ screens/Screen4.js ════════
+// ── Screen 4: Oppgaveanalyse ──────────────────────────────────────────
+const PROC_COLORS=['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#06B6D4','#F97316'];
+
+function Step4({allProcesses, taskData, setTaskData, onBack, onNext}) {
+  const [activeVC,   setActiveVC]   = useState(null);
+  const [activeProc, setActiveProc] = useState(-1);
+  const [busy,       setBusy]       = useState(false);
+  const [err,        setErr]        = useState('');
+
+  const vcGroups = {};
+  allProcesses.forEach((p, gi) => {
+    if (!vcGroups[p.vcIndex]) vcGroups[p.vcIndex] = {name: p.vcName, procs: []};
+    vcGroups[p.vcIndex].procs.push({...p, gi});
+  });
+  const vcKeys = Object.keys(vcGroups).map(Number);
+  const curVC  = activeVC ?? vcKeys[0] ?? 0;
+  const curPs  = vcGroups[curVC]?.procs || [];
+
+  // Auto-generate on mount — same pattern as Screen1
+  const generate = async () => {
+    setBusy(true); setErr('');
+    try {
+      const toGen = allProcesses.filter((_, gi) => !(taskData['proc_' + gi] || []).length);
+      if (!toGen.length) { setBusy(false); return; }
+      const list = toGen.map(p => {
+        const gi = allProcesses.indexOf(p);
+        return `proc_${gi}: "${p.name}" (${p.vcName})`;
+      }).join('\n');
+      const prompt = `Prosessteg:\n${list}\n\nGenerer 3-5 oppgaver per prosessteg.\nReturner KUN JSON:\n{"proc_0":[{"name":"Oppgavenavn","automation":4,"potential":3,"tech":"Teknologiforslag"}]}\nBruk eksakt samme proc_X nøkler. Ingen annen tekst.`;
+      const raw    = await callAI(prompt);
+      const parsed = parseJSON(raw);
+      if (parsed && typeof parsed === 'object') setTaskData(prev => ({...prev, ...parsed}));
+    } catch (e) {
+      setErr('Feil: ' + (e.message || String(e)));
+    }
+    setBusy(false);
+  };
+
+  useEffect(() => {
+    const needsGen = allProcesses.some((_, gi) => !(taskData['proc_' + gi] || []).length);
+    if (needsGen) generate();
+  }, []);
+
+  const setTasks = (gi, fn) => setTaskData(p => { const c = JSON.parse(JSON.stringify(p)); c['proc_'+gi] = fn(c['proc_'+gi]||[]); return c; });
+  const addTask  = gi => setTasks(gi, ts => [...ts, {name:'',automation:3,potential:3,tech:''}]);
+  const delTask  = (gi, ti) => setTasks(gi, ts => ts.filter((_,i) => i!==ti));
+  const setField = (gi, ti, k, v) => setTasks(gi, ts => { const c=JSON.parse(JSON.stringify(ts)); c[ti][k]=v; return c; });
+
+  return <div style={{animation:'fadeIn 0.4s ease'}}>
+    <h2 style={{fontSize:22,fontWeight:700,color:'#1E293B',marginBottom:4}}>KI-egnethet per oppgave</h2>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:18}}>Oppgaver genereres automatisk. Rediger fritt.</p>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:18}}>
+      {vcKeys.map(vi => {
+        const vg = vcGroups[vi], active = curVC===vi;
+        const tc = vg.procs.reduce((s,p) => s+(taskData['proc_'+p.gi]||[]).length, 0);
+        return <button key={vi} onClick={()=>{setActiveVC(vi);setActiveProc(-1);}}
+          style={{padding:'8px 14px',border:active?'2px solid #1E293B':'2px solid #E2E8F0',borderRadius:10,background:active?'#1E293B':'#FAFBFC',color:active?'#F8FAFC':'#475569',cursor:'pointer',fontSize:13,fontWeight:700}}>
+          {vg.name} <span style={{opacity:0.6,fontSize:11}}>({tc} oppg.)</span>
+        </button>;
+      })}
+    </div>
+    {busy && <div style={{padding:16,background:'#F0F9FF',border:'2px solid #BAE6FD',borderRadius:12,marginBottom:16,textAlign:'center',fontSize:14,fontWeight:600,color:'#0C4A6E'}}>✦ Genererer oppgaveforslag...</div>}
+    {err  && <div style={{padding:'10px 14px',background:'#FEE2E2',border:'1.5px solid #EF4444',borderRadius:8,fontSize:13,color:'#991B1B',marginBottom:12}}>⚠ {err}</div>}
+    <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:20}}>
+      {curPs.map((proc, idx) => {
+        const open  = activeProc===proc.gi;
+        const tasks = taskData['proc_'+proc.gi]||[];
+        return <div key={proc.gi} style={{border:'2px solid '+(open?'#1E293B':'#E2E8F0'),borderRadius:14,overflow:'hidden'}}>
+          <button onClick={()=>setActiveProc(open?-1:proc.gi)} style={{width:'100%',padding:'13px 16px',border:'none',background:open?'#1E293B':'#FAFBFC',color:open?'#F8FAFC':'#1E293B',cursor:'pointer',fontSize:14,fontWeight:700,textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{display:'flex',alignItems:'center',gap:8}}>
+              <Dot color={open?'#F8FAFC':PROC_COLORS[idx%PROC_COLORS.length]} size={10}/>
+              {proc.name} <span style={{fontSize:12,opacity:0.6}}>({tasks.length} oppgaver)</span>
+            </span>
+            <span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:6,background:open?'#ffffff22':'#E2E8F0',color:open?'#F8FAFC':'#64748B'}}>{open?'Lukk ▲':'Åpne ▼'}</span>
+          </button>
+          {open && <div style={{padding:'14px 16px'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 80px 80px 60px 28px',gap:'6px 8px',marginBottom:6,alignItems:'center'}}>
+              <span style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase'}}>Oppgave</span>
+              <Tooltip label="Grad av mulig automatisering" tip="5 = helt automatiserbar\n1 = krever manuelt skjønn"><span style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',textAlign:'center',cursor:'help',borderBottom:'1.5px dotted #94A3B8'}}>Automat.</span></Tooltip>
+              <Tooltip label="Potensial for forbedring" tip="5 = stor gevinst i tid, kost eller kvalitet\n1 = minimal gevinst"><span style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',textAlign:'center',cursor:'help',borderBottom:'1.5px dotted #94A3B8'}}>Forbedring</span></Tooltip>
+              <span style={{fontSize:11,fontWeight:700,color:'#94A3B8',textTransform:'uppercase',textAlign:'center'}}>Score</span>
+              <span/>
+            </div>
+            {tasks.map((t, ti) => {
+              const sc  = t.automation * t.potential;
+              const col = getColor(sc, 1, 25);
+              return <div key={ti} style={{display:'grid',gridTemplateColumns:'1fr 80px 80px 60px 28px',gap:'6px 8px',marginBottom:8,alignItems:'center'}}>
+                <input value={t.name} onChange={e=>setField(proc.gi,ti,'name',e.target.value)} placeholder="Oppgavenavn..."
+                  style={{border:'1.5px solid #E2E8F0',borderRadius:7,padding:'5px 8px',fontSize:12,outline:'none',background:'#fff'}}/>
+                {['automation','potential'].map(d =>
+                  <select key={d} value={t[d]} onChange={e=>setField(proc.gi,ti,d,+e.target.value)}
+                    style={{padding:'5px 2px',border:'1.5px solid #E2E8F0',borderRadius:7,fontSize:13,textAlign:'center',outline:'none',background:'#fff',cursor:'pointer',fontWeight:600}}>
+                    {[1,2,3,4,5].map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                )}
+                <div style={{display:'flex',alignItems:'center',gap:4}}><Dot color={col.dot} size={9}/><span style={{fontSize:12,fontWeight:700,color:col.text}}>{sc}</span></div>
+                <button onClick={()=>delTask(proc.gi,ti)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:'#EF4444',fontWeight:700}}>×</button>
+              </div>;
+            })}
+            <button onClick={()=>addTask(proc.gi)} style={{padding:'7px 14px',border:'2px dashed #CBD5E1',borderRadius:9,background:'transparent',color:'#64748B',cursor:'pointer',fontSize:12,fontWeight:600}}>+ Legg til oppgave</button>
+          </div>}
+        </div>;
+      })}
+    </div>
+    <BottomNav onBack={onBack} onNext={onNext}/>
+  </div>;
+}
+
+// ════════ screens/Screen5.js ════════
+// ── Step 5 ───────────────────────────────────────────────────────────
+function Step5({vcSteps,processData,bxtData,taskData,includedVC,includedProcs,allProcesses,weights,logoData,onBack}){
+  const [vcCtrl,setVcCtrl]=useState(null);
+  const [techBr,setTechBr]=useState(null);
+  const [hoverQ,setHoverQ]=useState(null);
+  const [reportHtml,setReportHtml]=useState(null);
+
+  const quadrant=!vcCtrl||!techBr?null:vcCtrl==='low'&&techBr==='high'?'collaborative':vcCtrl==='high'&&techBr==='high'?'platform':vcCtrl==='low'&&techBr==='low'?'focused':'vertical';
+  const QM=[{key:'collaborative',x:80,y:20,w:200,h:180},{key:'platform',x:280,y:20,w:200,h:180},{key:'focused',x:80,y:200,w:200,h:180},{key:'vertical',x:280,y:200,w:200,h:180}];
+
+  const generateReport = () => {
+    const p = [];
+    const today = new Date().toLocaleDateString('nb-NO',{year:'numeric',month:'long',day:'numeric'});
+    const BXT_S = BXT_CATS.filter(c=>c.key==='strategic'||c.key==='business').flatMap(c=>c.items);
+    const BXT_F = BXT_CATS.filter(c=>c.key==='experience'||c.key==='tech').flatMap(c=>c.items);
+    const bxtScores = (vi,pi) => {
+      const b = bxtData['vc_'+vi+'_p_'+pi]||{};
+      const sS=BXT_S.map(i=>b[i.key]??3), fS=BXT_F.map(i=>b[i.key]??3);
+      const sA=sS.reduce((a,c)=>a+c,0)/sS.length, fA=fS.reduce((a,c)=>a+c,0)/fS.length;
+      return {sA:Math.round(sA*10)/10, fA:Math.round(fA*10)/10, tA:Math.round((sA+fA)/2*10)/10, bxt:b};
+    };
+    const sb=(v,mx)=>{mx=mx||5;const r=v/mx;return "<span style='display:inline-block;padding:1px 8px;border-radius:14px;font-weight:700;font-size:9pt;background:"+(r>=0.7?'#D1FAE5':r>=0.45?'#FEF3C7':'#FEE2E2')+";color:"+(r>=0.7?'#065F46':r>=0.45?'#92400E':'#991B1B')+"'>"+v+"</span>";};
+    let pn=0;
+    const ft=(s)=>{pn++;return "<div style='position:absolute;bottom:16px;left:40px;right:40px;font-size:7.5pt;color:#94A3B8;border-top:1px solid #E2E8F0;padding-top:4px;display:flex;justify-content:space-between'><span>KI-egnethetsanalyse — "+s+"</span><span>Side "+pn+"</span></div>";};
+
+    p.push("<html><head><meta charset='UTF-8'><title>KI-egnethetsanalyse</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');*{box-sizing:border-box}body{font-family:'DM Sans',sans-serif;margin:0;padding:0;color:#1E293B;font-size:11pt;line-height:1.6}@page{size:A4;margin:18mm}@media print{.page{min-height:auto}}.page{page-break-after:always;padding:36px 40px;max-width:820px;margin:0 auto;min-height:100vh;position:relative}.page:last-child{page-break-after:auto}h1{font-size:26pt;font-weight:800;margin:0 0 6px;color:#1E293B}h2{font-size:15pt;font-weight:700;color:#1E293B;margin:20px 0 10px;border-bottom:2.5px solid #1E293B;padding-bottom:5px}h3{font-size:12pt;font-weight:700;color:#334155;margin:14px 0 6px}h4{font-size:10pt;font-weight:700;color:#475569;margin:10px 0 4px}table{width:100%;border-collapse:collapse;margin:8px 0 14px;font-size:9.5pt}th{background:#F1F5F9;padding:6px 8px;text-align:left;font-weight:700;border-bottom:2px solid #CBD5E1;font-size:8.5pt;text-transform:uppercase;letter-spacing:.03em}td{padding:5px 8px;border-bottom:1px solid #E2E8F0}.ig{display:grid;grid-template-columns:150px 1fr;gap:3px 10px;margin:6px 0 12px;font-size:9.5pt}.il{color:#64748B;font-weight:600}.iv{color:#1E293B}</style></head><body>");
+
+    // Forside
+    p.push("<div class='page' style='display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center'>");
+    if(logoData) {
+      p.push("<img src='"+logoData+"' alt='logo' style='max-height:80px;max-width:280px;margin-bottom:32px;object-fit:contain'/>");
+    } else {
+      p.push("<div style='margin-bottom:32px;font-size:44pt'>◈</div>");
+    }
+    p.push("<h1 style='font-size:22pt;margin-bottom:6px'>Analyse av KI-egnethet i verdikjede</h1>");
+    p.push("<p style='font-size:13pt;color:#64748B;margin:0 0 32px'>Strategisk vurdering av KI-modenhet og potensial</p>");
+    p.push("<p style='font-size:10pt;color:#94A3B8'>Generert "+today+"</p>");
+    p.push(ft('Forside'));
+    p.push("</div>");
+
+    // Steg 1
+    p.push("<div class='page'>");
+    p.push("<h2>Steg 1 — Verdikjedesteg</h2>");
+    p.push("<div style='display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:14px 0'>");
+    vcSteps.forEach((name,i)=>{if(!name.trim())return;p.push("<div style='background:#1E293B;color:#fff;padding:8px 16px;border-radius:8px;font-weight:700;font-size:9.5pt'>"+name+"</div>");if(i<vcSteps.length-1&&vcSteps[i+1]?.trim())p.push("<div style='color:#CBD5E1;font-size:14pt'>→</div>");});
+    p.push("</div>");
+    p.push("<table><tr><th>Nr</th><th>Verdikjedesteg</th><th>Prosessteg</th></tr>");
+    vcSteps.forEach((name,vi)=>{if(!name.trim())return;const ps=processData['vc_'+vi]||[];p.push("<tr><td>"+(vi+1)+"</td><td><strong>"+name+"</strong></td><td>"+ps.length+"</td></tr>");});
+    p.push("</table>");
+    p.push(ft('Steg 1'));
+    p.push("</div>");
+
+    // Steg 2
+    p.push("<div class='page'>");
+    p.push("<h2>Steg 2 — Objektiv vurdering</h2>");
+    p.push("<table><tr><th>Verdikjedesteg</th><th>Snitt</th><th>Data</th><th>Status</th></tr>");
+    vcSteps.forEach((name,vi)=>{
+      const ps=processData['vc_'+vi]||[];if(!ps.length)return;
+      const avg=(ps.reduce((s,pr)=>s+wAvg(pr.scores,weights),0)/ps.length).toFixed(1);
+      const data=(ps.reduce((s,pr)=>s+(pr.scores.data||3),0)/ps.length).toFixed(1);
+      const q=avg>=4&&data>=3;
+      const incl=includedVC['vc_'+vi]!==undefined?includedVC['vc_'+vi]:q;
+      p.push("<tr><td><strong>"+name+"</strong></td><td style='font-weight:700'>"+avg+"</td><td style='font-weight:700'>"+data+"</td><td><span style='padding:1px 8px;border-radius:4px;font-size:8.5pt;font-weight:700;background:"+(incl?'#D1FAE5':'#FEE2E2')+";color:"+(incl?'#065F46':'#991B1B')+"'>"+(incl?'✓ Inkludert':'✗ Ikke inkludert')+"</span></td></tr>");
+    });
+    p.push("</table>");
+    vcSteps.forEach((vcName,vi)=>{
+      const ps=processData['vc_'+vi]||[];if(!ps.length)return;
+      p.push("<h3>"+vcName+"</h3>");
+      p.push("<table><tr><th>Prosessteg</th><th>Potensial</th><th>Prosess</th><th>Data</th><th>Risiko</th><th>Endring</th><th>Snitt</th></tr>");
+      ps.forEach(pr=>{
+        const avg=wAvg(pr.scores,weights);
+        p.push("<tr><td><strong>"+pr.name+"</strong></td><td style='text-align:center'>"+(pr.scores.operational||3)+"</td><td style='text-align:center'>"+(pr.scores.process||3)+"</td><td style='text-align:center'>"+(pr.scores.data||3)+"</td><td style='text-align:center'>"+(pr.scores.risk||3)+"</td><td style='text-align:center'>"+(pr.scores.change||3)+"</td><td style='text-align:center;font-weight:700'>"+avg+"</td></tr>");
+      });
+      p.push("</table>");
+    });
+    p.push(ft('Steg 2'));
+    p.push("</div>");
+
+    // Steg 3
+    p.push("<div class='page'>");
+    p.push("<h2>Steg 3 — Subjektiv vurdering (BXT)</h2>");
+    p.push("<table><tr><th>Verdikjede</th><th>Prosessteg</th><th>Strategisk</th><th>Gjennomførb.</th><th>Total</th></tr>");
+    allProcesses.forEach(proc=>{const sc=bxtScores(proc.vcIndex,proc.procIndex);p.push("<tr><td>"+proc.vcName+"</td><td><strong>"+proc.name+"</strong></td><td style='text-align:center'>"+sb(sc.sA)+"</td><td style='text-align:center'>"+sb(sc.fA)+"</td><td style='text-align:center'>"+sb(sc.tA)+"</td></tr>");});
+    p.push("</table>");
+    allProcesses.forEach(proc=>{
+      const sc=bxtScores(proc.vcIndex,proc.procIndex);const bxt=sc.bxt;
+      p.push("<div class='page'>");
+      p.push("<h3>"+proc.vcName+" → "+proc.name+"</h3>");
+      p.push("<h4>Problemstilling, KI-idé og mål</h4><div class='ig'>");
+      [['problem_desc','Problem som skal løses'],['usecase_desc','KI-brukstilfelle'],['business_goal','Forretningsmål'],['key_results','Nøkkelresultat'],['responsible','Ansvarlig']].forEach(([k,l])=>{
+        const v=bxt[k]||'';p.push("<div class='il'>"+l+"</div><div class='iv'>"+(v.trim()?v.replace(/\n/g,'<br>'):"<span style='color:#CBD5E1;font-style:italic'>Ikke utfylt</span>")+"</div>");
+      });
+      p.push("</div>");
+      BXT_CATS.forEach(cat=>{
+        p.push("<h4 style='color:"+cat.color+";font-size:9pt'>"+cat.label+"</h4>");
+        p.push("<table><tr><th>Dimensjon</th><th>Score</th><th>Kommentar</th></tr>");
+        cat.items.forEach(item=>{p.push("<tr><td>"+item.label+"</td><td style='text-align:center'>"+sb(bxt[item.key]??3)+"</td><td style='color:#64748B;font-size:8.5pt'>"+(bxt[item.key+'_comment']||'—')+"</td></tr>");});
+        p.push("</table>");
+      });
+      p.push(ft('Steg 3 — '+proc.name));
+      p.push("</div>");
+    });
+
+    // Steg 4
+    const hasAnyTasks=allProcesses.some((_,i)=>(taskData['proc_'+i]||[]).length>0);
+    if(hasAnyTasks){
+      p.push("<div class='page'>");
+      p.push("<h2>Steg 4 — Oppgaveanalyse</h2>");
+      p.push("<table><tr><th>Prosessteg</th><th>Oppgaver</th></tr>");
+      allProcesses.forEach((_,idx)=>{const tasks=taskData['proc_'+idx]||[];if(!tasks.length)return;p.push("<tr><td><strong>"+allProcesses[idx].vcName+" → "+allProcesses[idx].name+"</strong></td><td>"+tasks.length+"</td></tr>");});
+      p.push("</table>");
+      allProcesses.forEach((proc,idx)=>{
+        const tasks=taskData['proc_'+idx]||[];if(!tasks.length)return;
+        p.push("<div class='page'>");
+        p.push("<h3>"+proc.vcName+" → "+proc.name+"</h3>");
+        p.push("<table><tr><th>Oppgave</th><th>Automatisering</th><th>Potensial</th><th>Score</th><th>Teknologi</th></tr>");
+        tasks.forEach(t=>{p.push("<tr><td><strong>"+t.name+"</strong></td><td style='text-align:center'>"+sb(t.automation||1)+"</td><td style='text-align:center'>"+sb(t.potential||1)+"</td><td style='text-align:center;font-weight:700'>"+((t.automation||1)*(t.potential||1))+"</td><td style='font-size:8.5pt;color:#64748B'>"+(t.tech||'')+"</td></tr>");});
+        p.push("</table>");
+        p.push(ft('Steg 4 — '+proc.name));
+        p.push("</div>");
+      });
+
+      // Prioriterte oppgaver
+      const allTasks=[];
+      allProcesses.forEach((proc,idx)=>{(taskData['proc_'+idx]||[]).forEach(t=>{allTasks.push({...t,process:proc.name,vc:proc.vcName,score:(t.automation||1)*(t.potential||1)});});});
+      allTasks.sort((a,b)=>b.score-a.score);
+      if(allTasks.length>0){
+        p.push("<div class='page'>");
+        p.push("<h2>Veien videre — prioriterte oppgaver</h2>");
+        p.push("<table><tr><th>#</th><th>Oppgave</th><th>Prosessteg</th><th>Score</th><th>Teknologi</th></tr>");
+        allTasks.forEach((t,i)=>{const bg=i<3?'background:#F0FDF4;':i<6?'background:#FEFCE8;':'';p.push("<tr style='"+bg+"'><td style='font-weight:700;color:#64748B'>"+(i+1)+"</td><td><strong>"+t.name+"</strong></td><td style='font-size:8.5pt;color:#64748B'>"+t.vc+" → "+t.process+"</td><td style='text-align:center;font-weight:700'>"+t.score+"</td><td style='font-size:8.5pt;color:#64748B'>"+t.tech+"</td></tr>");});
+        p.push("</table>");
+        p.push(ft('Veien videre'));
+        p.push("</div>");
+      }
+    }
+
+    // Steg 5
+    p.push("<div class='page'>");
+    p.push("<h2>Steg 5 — Implementeringsstrategi</h2>");
+    if(quadrant){
+      const q=STRATS[quadrant];
+      p.push("<div style='background:"+q.bg+";border:2px solid "+q.color+";border-radius:12px;padding:20px;margin:14px 0'>");
+      p.push("<div style='font-size:14pt;font-weight:800;color:"+q.color+"'>"+q.title+"</div>");
+      p.push("<div style='font-size:11pt;font-style:italic;color:#475569;margin:4px 0 10px'>"+q.sub+"</div>");
+      p.push("<p style='margin:0'>"+q.desc+"</p></div>");
+      p.push("<h3>Anbefalte tiltak</h3><ol>");
+      q.actions.forEach(a=>p.push("<li style='margin-bottom:4px'>"+a+"</li>"));
+      p.push("</ol>");
+    } else {
+      p.push("<p style='color:#64748B;font-style:italic'>Implementeringsstrategi er ikke valgt.</p>");
+    }
+    p.push(ft('Steg 5'));
+    p.push("</div>");
+
+    p.push("</body></html>");
+    setReportHtml(p.join(''));
+  };
+
+  return <div style={{animation:'fadeIn 0.4s ease'}}>
+    <h2 style={{fontSize:22,fontWeight:700,color:'#1E293B',marginBottom:4}}>Strategi for implementering</h2>
+    <p style={{fontSize:14,color:'#64748B',marginBottom:24}}>Besvar to spørsmål for å finne anbefalt implementeringsstrategi for KI i virksomheten.</p>
+
+    {[{label:'Verdikjedekontroll',q:'Hvilken påvirkningsgrad har selskapet over verdikjeden?',state:vcCtrl,set:setVcCtrl,opts:[{v:'low',l:'Lav kontroll',d:'Begrenset innflytelse'},{v:'high',l:'Høy kontroll',d:'Sterk kontroll'}]},
+      {label:'Teknologisk bredde',q:'Hvor mange teknologier og integrasjoner finnes?',state:techBr,set:setTechBr,opts:[{v:'low',l:'Få teknologier',d:'Lav kompleksitet'},{v:'high',l:'Mange teknologier',d:'Høy avhengighet'}]}
+    ].map(({label,q,state,set,opts})=>(
+      <div key={label} style={{background:'#fff',border:'2px solid #E2E8F0',borderRadius:14,padding:'18px 22px',marginBottom:14}}>
+        <div style={{fontSize:11,fontWeight:800,color:'#64748B',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:4}}>{label}</div>
+        <div style={{fontSize:14,fontWeight:600,color:'#1E293B',marginBottom:14}}>{q}</div>
+        <div style={{display:'flex',gap:12}}>
+          {opts.map(o=><button key={o.v} onClick={()=>set(o.v)} style={{flex:1,padding:'12px 16px',border:state===o.v?'2px solid #1E293B':'2px solid #E2E8F0',borderRadius:12,background:state===o.v?'#1E293B':'#FAFBFC',color:state===o.v?'#F8FAFC':'#475569',cursor:'pointer',textAlign:'left'}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:3}}>{o.l}</div>
+            <div style={{fontSize:12,opacity:0.7}}>{o.d}</div>
+          </button>)}
+        </div>
+      </div>
+    ))}
+
+    <div style={{display:'flex',justifyContent:'center',marginBottom:24}}>
+      <svg width={560} height={420} style={{fontFamily:"'DM Sans',sans-serif"}}>
+        {QM.map(q=>{
+          const active=quadrant===q.key,hover=hoverQ===q.key,s=STRATS[q.key];
+          return <g key={q.key} onMouseEnter={()=>setHoverQ(q.key)} onMouseLeave={()=>setHoverQ(null)}>
+            <rect x={q.x} y={q.y} width={q.w} height={q.h} rx={10} fill={active?s.bg:hover?s.bg+'88':'#F8FAFC'} stroke={active?s.color:hover?s.color+'66':'#E2E8F0'} strokeWidth={active?3:hover?2:1}/>
+            <text x={q.x+q.w/2} y={q.y+60} textAnchor="middle" fontSize={13} fontWeight={700} fill={active||hover?s.color:'#64748B'}>{s.title}</text>
+            <text x={q.x+q.w/2} y={q.y+80} textAnchor="middle" fontSize={11} fontStyle="italic" fill={active||hover?s.color:'#94A3B8'}>{s.sub}</text>
+            {active&&<text x={q.x+q.w/2} y={q.y+105} textAnchor="middle" fontSize={10} fill={s.color} fontWeight={700}>← Du er her</text>}
+          </g>;
+        })}
+        <line x1={80} y1={200} x2={480} y2={200} stroke="#CBD5E1" strokeWidth={2}/>
+        <line x1={280} y1={20} x2={280} y2={380} stroke="#CBD5E1" strokeWidth={2}/>
+        <text x={280} y={410} textAnchor="middle" fontSize={12} fontWeight={700} fill="#475569">Verdikjedekontroll →</text>
+        <text x={28} y={200} textAnchor="middle" fontSize={12} fontWeight={700} fill="#475569" transform="rotate(-90,28,200)">Teknologisk bredde →</text>
+      </svg>
+    </div>
+
+    {quadrant&&<div style={{background:STRATS[quadrant].bg,border:'2px solid '+STRATS[quadrant].color,borderRadius:14,padding:'22px 26px',marginBottom:24}}>
+      <div style={{display:'inline-block',padding:'5px 12px',borderRadius:7,background:STRATS[quadrant].color,color:'#fff',fontSize:11,fontWeight:800,textTransform:'uppercase',marginBottom:10}}>Anbefalt strategi</div>
+      <h3 style={{fontSize:19,fontWeight:800,color:'#1E293B',marginBottom:4}}>{STRATS[quadrant].title}</h3>
+      <div style={{fontSize:13,fontStyle:'italic',color:'#64748B',marginBottom:14}}>{STRATS[quadrant].sub}</div>
+      <p style={{fontSize:14,color:'#334155',lineHeight:1.7,marginBottom:18}}>{STRATS[quadrant].desc}</p>
+      {STRATS[quadrant].actions.map((a,i)=><div key={i} style={{display:'flex',alignItems:'flex-start',gap:10,fontSize:13,color:'#475569',marginBottom:8,lineHeight:1.5}}>
+        <span style={{minWidth:22,height:22,borderRadius:6,background:STRATS[quadrant].color+'22',color:STRATS[quadrant].color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0}}>{i+1}</span>
+        {a}
+      </div>)}
+    </div>}
+
+    {!quadrant&&<div style={{padding:18,background:'#FEF3C7',border:'2px solid #F59E0B',borderRadius:14,marginBottom:24,textAlign:'center',fontSize:14,color:'#92400E'}}>Velg begge svar ovenfor for å se anbefalt strategi.</div>}
+
+    {/* Advarsel om lagring */}
+    <div style={{background:'#FEE2E2',border:'2px solid #EF4444',borderRadius:12,padding:'16px 20px',marginBottom:16,display:'flex',gap:12,alignItems:'flex-start'}}>
+      <span style={{fontSize:20,flexShrink:0}}>⚠️</span>
+      <div>
+        <div style={{fontSize:14,fontWeight:700,color:'#991B1B',marginBottom:4}}>Husk å lagre rapporten!</div>
+        <div style={{fontSize:13,color:'#991B1B',lineHeight:1.6}}>Data lever kun i denne nettleserfanen og forsvinner hvis du lukker den. Last ned PDF-rapporten for å ta vare på analysen. Hvis du mister dataene kan du laste opp PDF-en i en ny sesjon og be KI regenerere verdikjeden basert på den.</div>
+      </div>
+    </div>
+
+    {/* Rapport-knapp */}
+    <div style={{textAlign:'center',marginTop:32,marginBottom:20}}>
+      <button onClick={generateReport}
+        style={{padding:'14px 32px',border:'none',borderRadius:12,background:'linear-gradient(135deg,#1E293B,#334155)',color:'#F8FAFC',fontSize:16,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 12px rgba(30,41,59,0.3)'}}>
+        📄 Generer sluttrapport
+      </button>
+      <p style={{fontSize:12,color:'#94A3B8',marginTop:8}}>Vises i forhåndsvisning — skriv ut eller lagre som PDF</p>
+    </div>
+
+    {/* Rapport overlay */}
+    {reportHtml&&<div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(15,23,42,0.85)',zIndex:1000,display:'flex',flexDirection:'column',alignItems:'center',padding:'20px'}}>
+      <div style={{display:'flex',gap:12,marginBottom:16}}>
+        <button onClick={()=>{const w=window.open('','_blank');w.document.write(reportHtml);w.document.close();w.print();}}
+          style={{padding:'10px 24px',border:'none',borderRadius:10,background:'#1E293B',color:'#F8FAFC',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          🖨 Skriv ut / Lagre som PDF
+        </button>
+        <button onClick={()=>setReportHtml(null)}
+          style={{padding:'10px 24px',border:'2px solid #fff',borderRadius:10,background:'transparent',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          ✕ Lukk
+        </button>
+      </div>
+      <iframe srcDoc={reportHtml} style={{width:'100%',maxWidth:900,flex:1,border:'none',borderRadius:12,background:'#fff',boxShadow:'0 8px 32px rgba(0,0,0,0.3)'}}/>
+    </div>}
+
+    <BottomNav onBack={onBack}/>
+  </div>;
+}
+
+
+// ════════ App.js ════════
+// ── App ──────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'verdikjede_state_v1';
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    return s ? JSON.parse(s) : null;
+  } catch(e) { return null; }
+}
+
+function saveState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function App(){
+  const saved = loadState();
+
+  const [step,         setStep]         = useState(saved?.step ?? 0);
+  const [vcSteps,      setVcSteps]      = useState(saved?.vcSteps ?? ['','']);
+  const [processData,  setProcessData]  = useState(saved?.processData ?? {});
+  const [bxtData,      setBxtData]      = useState(saved?.bxtData ?? {});
+  const [taskData,     setTaskData]     = useState(saved?.taskData ?? {});
+  const [selectedVC,   setSelectedVC]   = useState(saved?.selectedVC ?? null);
+  const [includedVC,   setIncludedVC]   = useState(saved?.includedVC ?? {});
+  const [includedProcs,setIncludedProcs]= useState(saved?.includedProcs ?? {});
+  const [weights,      setWeights]      = useState(saved?.weights ?? {operational:20,process:20,data:20,risk:20,change:20});
+  const [customDims,   setCustomDims]   = useState(saved?.customDims ?? []);
+  const [logoData,     setLogoData]     = useState(saved?.logoData ?? null);
+
+  // Save to localStorage whenever state changes
+  useEffect(()=>{
+    saveState({step,vcSteps,processData,bxtData,taskData,selectedVC,includedVC,includedProcs,weights,customDims,logoData});
+  },[step,vcSteps,processData,bxtData,taskData,selectedVC,includedVC,includedProcs,weights,customDims,logoData]);
+
+  const allProcesses=useMemo(()=>{
+    const out=[];
+    vcSteps.forEach((vcName,vcIndex)=>{
+      const ps=processData['vc_'+vcIndex]||[];
+      if(!ps.length) return;
+      const avg=ps.reduce((s,p)=>s+wAvg(p.scores,weights),0)/ps.length;
+      const dAvg=ps.reduce((s,p)=>s+(p.scores?.data||3),0)/ps.length;
+      const vcQ=avg>=4&&dAvg>=3;
+      const vcIncl=includedVC['vc_'+vcIndex]!==undefined?includedVC['vc_'+vcIndex]:vcQ;
+      if(!vcIncl) return;
+      ps.forEach((proc,pi)=>{
+        const a=bxtAgg(bxtData['vc_'+vcIndex+'_p_'+pi]);
+        const q=a.total>=4;
+        const incl=includedProcs[vcIndex+'_'+pi]!==undefined?includedProcs[vcIndex+'_'+pi]:q;
+        if(!incl) return;
+        out.push({name:proc.name,vcName,vcIndex,procIndex:pi});
+      });
+    });
+    return out;
+  },[vcSteps,processData,bxtData,includedVC,includedProcs,weights]);
+
+  const resetAll = () => {
+    if(!confirm('Er du sikker på at du vil starte på nytt? All data slettes.')) return;
+    localStorage.removeItem(STORAGE_KEY);
+    setStep(0); setVcSteps(['','']); setProcessData({}); setBxtData({});
+    setTaskData({}); setSelectedVC(null); setIncludedVC({}); setIncludedProcs({});
+    setWeights({operational:20,process:20,data:20,risk:20,change:20});
+    setCustomDims([]); setLogoData(null);
+  };
+
+  return <div style={{minHeight:'100vh',background:'#F8FAFC'}}>
+    <div style={{position:'sticky',top:0,zIndex:100,background:'linear-gradient(135deg,#1E293B,#334155)',padding:'18px 28px 14px'}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:34,height:34,borderRadius:9,background:'linear-gradient(135deg,#10B981,#3B82F6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:17}}>◈</div>
+          <h1 style={{fontSize:20,fontWeight:800,color:'#F8FAFC',margin:0}}>Verdikjede KI-analyse</h1>
+        </div>
+        <button onClick={resetAll} style={{padding:'6px 14px',border:'1.5px solid #475569',borderRadius:8,background:'transparent',color:'#94A3B8',fontSize:12,fontWeight:600,cursor:'pointer'}}>↺ Start på nytt</button>
+      </div>
+      <p style={{fontSize:12,color:'#94A3B8',margin:'0 0 10px 46px'}}>Kartlegg KI-egnethet på tvers av selskapets verdikjede og prosesser</p>
+      <div style={{background:'#F8FAFC',borderRadius:10,padding:'10px 14px'}}>
+        <StepIndicator current={step} onStep={setStep}/>
+      </div>
+    </div>
+    <div style={{padding:'24px 28px'}}>
+      {step===0&&<Step1 steps={vcSteps} setSteps={setVcSteps} setProcessData={setProcessData} logoData={logoData} setLogoData={setLogoData} onNext={()=>setStep(1)}/>}
+      {step===1&&<Step2 vcSteps={vcSteps} processData={processData} setProcessData={setProcessData} includedVC={includedVC} setIncludedVC={setIncludedVC} weights={weights} setWeights={setWeights} customDims={customDims} setCustomDims={setCustomDims} onBack={()=>setStep(0)} onNext={()=>setStep(2)}/>}
+      {step===2&&<Step3 vcSteps={vcSteps} processData={processData} bxtData={bxtData} setBxtData={setBxtData} selectedVC={selectedVC} setSelectedVC={setSelectedVC} includedVC={includedVC} includedProcs={includedProcs} setIncludedProcs={setIncludedProcs} weights={weights} onBack={()=>setStep(1)} onNext={()=>setStep(3)}/>}
+      {step===3&&<Step4 allProcesses={allProcesses} taskData={taskData} setTaskData={setTaskData} onBack={()=>setStep(2)} onNext={()=>setStep(4)}/>}
+      {step===4&&<Step5 vcSteps={vcSteps} processData={processData} bxtData={bxtData} taskData={taskData} includedVC={includedVC} includedProcs={includedProcs} allProcesses={allProcesses} weights={weights} logoData={logoData} onBack={()=>setStep(3)}/>}
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
