@@ -241,7 +241,7 @@ function Step1({steps, setSteps, setProcessData, logoData, setLogoData, onNext})
 
       <button onClick={generate} disabled={busy}
         style={{padding:'10px 24px',border:'none',borderRadius:10,background:busy?'#CBD5E1':'#0EA5E9',color:'#fff',cursor:busy?'not-allowed':'pointer',fontSize:14,fontWeight:700}}>
-        {busy ? 'Genererer...' : done ? '✦ Generer på nytt' : '✦ Generer verdikjedesteg'}
+        {busy ? 'Genererer...' : done ? '✦ Lag forslag på nytt' : '✦ Lag forslag verdikjedesteg'}
       </button>
       {err && <div style={{marginTop:10,padding:'10px 14px',background:'#FEE2E2',border:'1.5px solid #EF4444',borderRadius:8,fontSize:13,color:'#991B1B'}}>⚠ {err}</div>}
     </div>
