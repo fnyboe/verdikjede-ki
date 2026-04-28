@@ -13,7 +13,7 @@ interface Props {
 export function WizardSteps({ stegNr }: Props) {
   return (
     <div className="flex items-start gap-0 w-full">
-      {[1, 2, 3, 4, 5].map((n, idx) => {
+      {[1, 2, 3, 4, 5].map((n) => {
         const isActive = n === stegNr
         const isDone = n < stegNr
         const isLast = n === 5
