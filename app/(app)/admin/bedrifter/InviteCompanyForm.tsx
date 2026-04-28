@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useFormState } from 'react-dom'
 import { inviteCompany } from './actions'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export function InviteCompanyForm() {
-  const [state, action, pending] = useActionState(inviteCompany, undefined)
+  const [state, action] = useFormState(inviteCompany, undefined)
 
   return (
     <form action={action} className="flex flex-col gap-4 max-w-md">
@@ -43,13 +43,11 @@ export function InviteCompanyForm() {
         </p>
       )}
 
-      <Button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        label="Inviter bedrift"
+        pendingLabel="Sender..."
         className="bg-[#10B981] hover:bg-[#059669] text-white"
-      >
-        {pending ? 'Sender...' : 'Inviter bedrift'}
-      </Button>
+      />
     </form>
   )
 }

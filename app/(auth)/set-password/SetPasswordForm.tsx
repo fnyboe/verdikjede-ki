@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useFormState } from 'react-dom'
 import { updatePassword } from './actions'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export function SetPasswordForm() {
-  const [state, action, pending] = useActionState(updatePassword, undefined)
+  const [state, action] = useFormState(updatePassword, undefined)
 
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -41,13 +41,11 @@ export function SetPasswordForm() {
         </p>
       )}
 
-      <Button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        label="Set passord"
+        pendingLabel="Lagrar..."
         className="w-full bg-[#10B981] hover:bg-[#059669] text-white"
-      >
-        {pending ? 'Lagrar...' : 'Set passord'}
-      </Button>
+      />
     </form>
   )
 }

@@ -1,12 +1,13 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useFormState } from 'react-dom'
+import { useState } from 'react'
 import { signIn } from './actions'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 import { ForgotPasswordForm } from './ForgotPasswordForm'
 
 export function LoginForm() {
-  const [state, action, pending] = useActionState(signIn, undefined)
+  const [state, action] = useFormState(signIn, undefined)
   const [showForgot, setShowForgot] = useState(false)
 
   if (showForgot) {
@@ -45,13 +46,11 @@ export function LoginForm() {
         </p>
       )}
 
-      <Button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        label="Logg inn"
+        pendingLabel="Logger inn..."
         className="w-full bg-[#10B981] hover:bg-[#059669] text-white"
-      >
-        {pending ? 'Logger inn...' : 'Logg inn'}
-      </Button>
+      />
 
       <button
         type="button"

@@ -1,11 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useFormState } from 'react-dom'
 import { resetPassword } from './actions'
-import { Button } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/SubmitButton'
 
 export function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
-  const [state, action, pending] = useActionState(resetPassword, undefined)
+  const [state, action] = useFormState(resetPassword, undefined)
 
   if (state?.success) {
     return (
@@ -38,13 +38,11 @@ export function ForgotPasswordForm({ onBack }: { onBack: () => void }) {
         />
       </div>
 
-      <Button
-        type="submit"
-        disabled={pending}
+      <SubmitButton
+        label="Send tilbakestillingslenke"
+        pendingLabel="Sender..."
         className="w-full bg-[#10B981] hover:bg-[#059669] text-white"
-      >
-        {pending ? 'Sender...' : 'Send tilbakestillingslenke'}
-      </Button>
+      />
 
       <button type="button" onClick={onBack} className="text-sm text-[#3B82F6] hover:underline text-center">
         Tilbake til innlogging
