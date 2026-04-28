@@ -46,37 +46,37 @@ export default async function StegPage({ params }: Props) {
         <Step1Verdikjede analyseId={id} eksisterendeSteg={eksisterendeSteg} />
       </div>
     )
-  }
+  } else {
+    return (
+      <div className="flex flex-col gap-6">
+        <div>
+          <p className="text-sm text-slate-500 mb-1">{analyse.title}</p>
+          <h1 className="text-2xl font-bold text-[#1E293B]">
+            Steg {stegParam} – {tittel}
+          </h1>
+        </div>
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-slate-500 mb-1">{analyse.title}</p>
-        <h1 className="text-2xl font-bold text-[#1E293B]">
-          Steg {stegParam} – {tittel}
-        </h1>
-      </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
+          Wizard-innhald kjem i Fase 5.
+        </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
-        Wizard-innhald kjem i Fase 5.
-      </div>
-
-      <div className="flex justify-between">
-        <Link
-          href={`/analyse/${id}/steg/${stegNr - 1}`}
-          className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-        >
-          ← Førre steg
-        </Link>
-        {stegNr < 5 && (
+        <div className="flex justify-between">
           <Link
-            href={`/analyse/${id}/steg/${stegNr + 1}`}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#10B981] hover:bg-[#059669] rounded-lg transition-colors"
+            href={`/analyse/${id}/steg/${stegNr - 1}`}
+            className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            Neste steg →
+            ← Førre steg
           </Link>
-        )}
+          {stegNr < 5 && (
+            <Link
+              href={`/analyse/${id}/steg/${stegNr + 1}`}
+              className="px-4 py-2 text-sm font-medium text-white bg-[#10B981] hover:bg-[#059669] rounded-lg transition-colors"
+            >
+              Neste steg →
+            </Link>
+          )}
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 }
