@@ -6,15 +6,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Step1Verdikjede } from '@/components/wizard/Step1Verdikjede'
 import { Step2Prosessscoring } from '@/components/wizard/Step2Prosessscoring'
+import { WizardSteps } from '@/components/wizard/WizardSteps'
 import type { Process, VcStep } from '@/types'
-
-const STEG_TITLAR: Record<string, string> = {
-  '1': 'Verdikjede',
-  '2': 'Prosessscoring',
-  '3': 'BXT-analyse',
-  '4': 'Oppgåver',
-  '5': 'Rapport',
-}
 
 interface Props {
   params: Promise<{ id: string; steg: string }>
@@ -34,7 +27,6 @@ export default async function StegPage({ params }: Props) {
   if (!result.success || !result.data) redirect('/dashboard')
 
   const analyse = result.data
-  const tittel = STEG_TITLAR[stegParam] ?? `Steg ${stegParam}`
 
   if (stegNr === 1) {
     const vcResult = await getVcStepsByAnalysis(id)
@@ -42,9 +34,9 @@ export default async function StegPage({ params }: Props) {
 
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <p className="text-sm text-slate-500 mb-1">{analyse.title}</p>
-          <h1 className="text-2xl font-bold text-[#1E293B]">Steg 1 – Verdikjede</h1>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-500">{analyse.title}</p>
+          <WizardSteps stegNr={stegNr} />
         </div>
         <Step1Verdikjede analyseId={id} eksisterendeSteg={eksisterendeSteg} />
       </div>
@@ -63,9 +55,9 @@ export default async function StegPage({ params }: Props) {
 
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <p className="text-sm text-slate-500 mb-1">{analyse.title}</p>
-          <h1 className="text-2xl font-bold text-[#1E293B]">Steg 2 – Prosessscoring</h1>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-500">{analyse.title}</p>
+          <WizardSteps stegNr={stegNr} />
         </div>
         <Step2Prosessscoring
           analyseId={id}
@@ -79,11 +71,9 @@ export default async function StegPage({ params }: Props) {
   } else {
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <p className="text-sm text-slate-500 mb-1">{analyse.title}</p>
-          <h1 className="text-2xl font-bold text-[#1E293B]">
-            Steg {stegParam} – {tittel}
-          </h1>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-500">{analyse.title}</p>
+          <WizardSteps stegNr={stegNr} />
         </div>
 
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">

@@ -30,6 +30,7 @@ export interface Process {
   name: string
   order_index: number
   scores: Record<string, number>
+  included: boolean
   problem_desc: string | null
   usecase_desc: string | null
   ai_suggestion: string | null
