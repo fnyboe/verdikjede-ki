@@ -18,6 +18,7 @@ export interface Analysis {
   id: string
   company_id: string
   title: string
+  weights: Record<string, number>
   created_at: string
   updated_at: string
 }
@@ -25,8 +26,10 @@ export interface Analysis {
 export interface Process {
   id: string
   analysis_id: string
+  vc_step_id: string | null
   name: string
   order_index: number
+  scores: Record<string, number>
   problem_desc: string | null
   usecase_desc: string | null
   ai_suggestion: string | null
