@@ -56,3 +56,31 @@ export interface ServerActionResult<T = undefined> {
   data?: T
   error?: string
 }
+
+export interface Dim {
+  key: string
+  label: string
+  tip: string
+}
+
+export interface BxtItem {
+  key: string
+  label: string
+  tip: string
+}
+
+export interface BxtCat {
+  key: string
+  label: string
+  color: string
+  items: BxtItem[]
+}
+
+export interface Strat {
+  title: string
+  sub: string
+  color: string
+  bg: string
+  desc: string
+  actions: string[]
+}
