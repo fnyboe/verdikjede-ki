@@ -1,3 +1,5 @@
+export const revalidate = 0
+
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
