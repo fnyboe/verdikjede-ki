@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const redirectResponse = NextResponse.redirect(`${origin}/dashboard`)
+    const destination = (type === 'invite' || type === 'recovery')
+      ? `${origin}/set-password`
+      : `${origin}/dashboard`
+
+    const redirectResponse = NextResponse.redirect(destination)
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
