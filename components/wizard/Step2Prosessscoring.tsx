@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
 import { DIMS } from '@/lib/constants'
-import type { VcStep, Process } from '@/types'
+import type { VcStep, Process, Dim } from '@/types'
 
 interface ProcessRow {
   name: string
@@ -21,28 +21,30 @@ interface Props {
   initialWeights: Record<string, number>
 }
 
-function defaultScores(): Record<string, number> {
-  return Object.fromEntries(DIMS.map((d) => [d.key, 3]))
+function defaultScores(allDims: Dim[]): Record<string, number> {
+  return Object.fromEntries(allDims.map((d) => [d.key, 3]))
 }
 
-function calcWeightedAvg(scores: Record<string, number>, weights: Record<string, number>): number {
-  const total = DIMS.reduce((s, d) => s + (weights[d.key] ?? 0), 0)
+function calcWeightedAvg(scores: Record<string, number>, weights: Record<string, number>, allDims: Dim[]): number {
+  const total = allDims.reduce((s, d) => s + (weights[d.key] ?? 0), 0)
   if (total === 0) return 0
-  return DIMS.reduce((s, d) => s + (scores[d.key] ?? 3) * (weights[d.key] ?? 0), 0) / total
+  return allDims.reduce((s, d) => s + (scores[d.key] ?? 3) * (weights[d.key] ?? 0), 0) / total
 }
 
 function formatAvg(avg: number): string {
   return avg.toFixed(2)
 }
 
-function autoIncluded(scores: Record<string, number>, weights: Record<string, number>): boolean {
-  return calcWeightedAvg(scores, weights) >= 4 && (scores['data'] ?? 3) >= 3
+function autoIncluded(scores: Record<string, number>, weights: Record<string, number>, allDims: Dim[]): boolean {
+  return calcWeightedAvg(scores, weights, allDims) >= 4 && (scores['data'] ?? 3) >= 3
 }
 
-function trafficLight(scores: Record<string, number>, weights: Record<string, number>): 'green' | 'yellow' | 'red' {
-  const avg = calcWeightedAvg(scores, weights)
-  const data = scores['data'] ?? 3
-  if (avg >= 4 && data >= 3) return 'green'
+function stepTrafficLight(vsRows: ProcessRow[], weights: Record<string, number>, allDims: Dim[]): 'green' | 'yellow' | 'red' {
+  const filled = vsRows.filter((r) => r.name.trim())
+  if (filled.length === 0) return 'yellow'
+  const avg = filled.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filled.length
+  const dataAvg = filled.reduce((s, r) => s + (r.scores['data'] ?? 3), 0) / filled.length
+  if (avg >= 4 && dataAvg >= 3) return 'green'
   if (avg >= 3) return 'yellow'
   return 'red'
 }
@@ -53,15 +55,15 @@ function dotColor(light: 'green' | 'yellow' | 'red'): string {
   return 'bg-red-400'
 }
 
-function toRows(processes: Process[], weights: Record<string, number>): ProcessRow[] {
+function toRows(processes: Process[], weights: Record<string, number>, allDims: Dim[]): ProcessRow[] {
   return processes.map((p) => {
     const scores = Object.fromEntries(
-      DIMS.map((d) => [d.key, typeof p.scores?.[d.key] === 'number' ? p.scores[d.key] : 3])
+      allDims.map((d) => [d.key, typeof p.scores?.[d.key] === 'number' ? p.scores[d.key] : 3])
     )
     return {
       name: p.name,
       scores,
-      included: typeof p.included === 'boolean' ? p.included : autoIncluded(scores, weights),
+      included: typeof p.included === 'boolean' ? p.included : autoIncluded(scores, weights, allDims),
     }
   })
 }
@@ -75,10 +77,17 @@ export function Step2Prosessscoring({
 }: Props) {
   const router = useRouter()
 
+  const [customDims, setCustomDims] = useState<Dim[]>([])
+  const [newDimLabel, setNewDimLabel] = useState('')
+  const [newDimTip, setNewDimTip] = useState('')
+  const [showAddDim, setShowAddDim] = useState(false)
+
+  const allDims: Dim[] = [...DIMS, ...customDims]
+
   const [weights, setWeights] = useState<Record<string, number>>(initialWeights)
   const [rows, setRows] = useState<Record<string, ProcessRow[]>>(
     Object.fromEntries(
-      vcSteps.map((vs) => [vs.id, toRows(initialProcesses[vs.id] ?? [], initialWeights)])
+      vcSteps.map((vs) => [vs.id, toRows(initialProcesses[vs.id] ?? [], initialWeights, [...DIMS])])
     )
   )
   const [activeTab, setActiveTab] = useState<string>(vcSteps[0]?.id ?? '')
@@ -93,6 +102,25 @@ export function Step2Prosessscoring({
 
   const weightTotal = Object.values(weights).reduce((s, v) => s + v, 0)
   const weightsValid = weightTotal === 100
+
+  function addCustomDim() {
+    if (!newDimLabel.trim() || customDims.length >= 2) return
+    const key = `custom_${customDims.length}`
+    const newDim: Dim = { key, label: newDimLabel.trim(), tip: newDimTip.trim() }
+    setCustomDims((prev) => [...prev, newDim])
+    setWeights((prev) => ({ ...prev, [key]: 10 }))
+    setRows((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).map(([vsId, vsRows]) => [
+          vsId,
+          vsRows.map((r) => ({ ...r, scores: { ...r.scores, [key]: 3 } })),
+        ])
+      )
+    )
+    setNewDimLabel('')
+    setNewDimTip('')
+    setShowAddDim(false)
+  }
 
   async function handleSelectTab(vsId: string, vsName: string) {
     setActiveTab(vsId)
@@ -109,8 +137,8 @@ export function Step2Prosessscoring({
           setRows((prev) => ({
             ...prev,
             [vsId]: json.processes.map((name: string) => {
-              const scores = defaultScores()
-              return { name, scores, included: autoIncluded(scores, weights) }
+              const scores = defaultScores(allDims)
+              return { name, scores, included: autoIncluded(scores, weights, allDims) }
             }),
           }))
         }
@@ -136,16 +164,16 @@ export function Step2Prosessscoring({
       [vsId]: prev[vsId].map((r, idx) => {
         if (idx !== i) return r
         const newScores = { ...r.scores, [dimKey]: value }
-        return { ...r, scores: newScores, included: autoIncluded(newScores, weights) }
+        return { ...r, scores: newScores, included: autoIncluded(newScores, weights, allDims) }
       }),
     }))
   }
 
   function addRow(vsId: string) {
-    const scores = defaultScores()
+    const scores = defaultScores(allDims)
     setRows((prev) => ({
       ...prev,
-      [vsId]: [...prev[vsId], { name: '', scores, included: autoIncluded(scores, weights) }],
+      [vsId]: [...prev[vsId], { name: '', scores, included: autoIncluded(scores, weights, allDims) }],
     }))
   }
 
@@ -156,10 +184,13 @@ export function Step2Prosessscoring({
     }))
   }
 
-  function toggleIncluded(vsId: string, i: number) {
+  function toggleStepIncluded(vsId: string) {
+    const vsRows = rows[vsId] ?? []
+    const filled = vsRows.filter((r) => r.name.trim())
+    const allIncluded = filled.length > 0 && filled.every((r) => r.included)
     setRows((prev) => ({
       ...prev,
-      [vsId]: prev[vsId].map((r, idx) => (idx === i ? { ...r, included: !r.included } : r)),
+      [vsId]: prev[vsId].map((r) => ({ ...r, included: !allIncluded })),
     }))
   }
 
@@ -170,7 +201,7 @@ export function Step2Prosessscoring({
       Object.fromEntries(
         Object.entries(prev).map(([vsId, vsRows]) => [
           vsId,
-          vsRows.map((r) => ({ ...r, included: autoIncluded(r.scores, newWeights) })),
+          vsRows.map((r) => ({ ...r, included: autoIncluded(r.scores, newWeights, allDims) })),
         ])
       )
     )
@@ -203,14 +234,14 @@ export function Step2Prosessscoring({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Vekting */}
+      {/* Vekting av variablar */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
         <div>
-          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Vekting av dimensjonar</h2>
-          <p className="text-sm text-slate-500">Fordel 100 poeng mellom dimensjonane.</p>
+          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Vekting av variablar</h2>
+          <p className="text-sm text-slate-500">Fordel 100 poeng mellom variablane.</p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-          {DIMS.map((d) => (
+          {allDims.map((d) => (
             <div key={d.key} className="flex flex-col gap-1">
               <label className="text-xs font-medium text-slate-600" title={d.tip}>{d.label}</label>
               <input
@@ -224,16 +255,62 @@ export function Step2Prosessscoring({
             </div>
           ))}
         </div>
-        <p className={`text-sm font-medium ${weightsValid ? 'text-emerald-600' : 'text-red-600'}`}>
-          Sum: {weightTotal} / 100 {weightsValid ? '✓' : '– må vere 100'}
-        </p>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <p className={`text-sm font-medium ${weightsValid ? 'text-emerald-600' : 'text-red-600'}`}>
+            Sum: {weightTotal} / 100 {weightsValid ? '✓' : '– må vere 100'}
+          </p>
+          {customDims.length < 2 && (
+            <button
+              onClick={() => setShowAddDim((v) => !v)}
+              className="text-sm text-[#3B82F6] hover:underline"
+            >
+              + Legg til variabel
+            </button>
+          )}
+        </div>
+
+        {showAddDim && (
+          <div className="flex flex-col gap-2 border border-slate-200 rounded-lg p-4 bg-slate-50">
+            <p className="text-xs font-semibold text-slate-600">Ny variabel (maks 2 eigne)</p>
+            <input
+              type="text"
+              value={newDimLabel}
+              onChange={(e) => setNewDimLabel(e.target.value)}
+              placeholder="Namn på variabel *"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+            />
+            <input
+              type="text"
+              value={newDimTip}
+              onChange={(e) => setNewDimTip(e.target.value)}
+              placeholder="Beskriving / tooltip (valfritt)"
+              className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={addCustomDim}
+                disabled={!newDimLabel.trim()}
+                className="text-sm bg-[#1E293B] text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 disabled:opacity-50"
+              >
+                Legg til
+              </button>
+              <button
+                onClick={() => setShowAddDim(false)}
+                className="text-sm text-slate-500 px-3 py-1.5 rounded-lg hover:bg-slate-100"
+              >
+                Avbryt
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">Ny variabel får vekt 10 — juster summen til 100 etterpå.</p>
+          </div>
+        )}
       </div>
 
       {/* Tab-navigasjon + scoringspanel */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-6 pb-0 flex flex-col gap-2">
           <h2 className="text-base font-semibold text-[#1E293B]">Prosessar per verdikjedesteg</h2>
-          <p className="text-sm text-slate-500">Velg eit verdikjedesteg, legg inn prosessar og gi score (1–5) på kvar dimensjon.</p>
+          <p className="text-sm text-slate-500">Velg eit verdikjedesteg, legg inn prosessar og gi score (1–5) på kvar variabel.</p>
           <p className="text-sm text-slate-500">Dei som tilrådast å ta med vidare har KI-eignetheit over 4 i snitt og 3 eller meir på datatilgjengelegheit. Desse er markerte nedst. For å ta med andre prosessar, klikk på dei i oppsummeringa nedst.</p>
         </div>
 
@@ -243,7 +320,7 @@ export function Step2Prosessscoring({
             const vsRows = rows[vs.id] ?? []
             const filledRows = vsRows.filter((r) => r.name.trim())
             const avgAll = filledRows.length > 0
-              ? filledRows.reduce((s, r) => s + calcWeightedAvg(r.scores, weights), 0) / filledRows.length
+              ? filledRows.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filledRows.length
               : null
             const isActive = vs.id === activeTab
             const light = avgAll !== null
@@ -285,7 +362,7 @@ export function Step2Prosessscoring({
           )}
 
           {activeRows.map((row, i) => (
-            <div key={i} className="border border-slate-200 rounded-lg p-4 flex flex-col gap-3">
+            <div key={i} className="border border-blue-100 bg-blue-50 rounded-lg p-4 flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
                 <input
@@ -293,7 +370,7 @@ export function Step2Prosessscoring({
                   value={row.name}
                   onChange={(e) => updateName(activeTab, i, e.target.value)}
                   placeholder="Prosessnamn"
-                  className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                  className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
                 />
                 <button
                   onClick={() => removeRow(activeTab, i)}
@@ -305,7 +382,7 @@ export function Step2Prosessscoring({
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                {DIMS.map((d) => (
+                {allDims.map((d) => (
                   <div key={d.key} className="flex flex-col gap-1">
                     <label className="text-xs text-slate-500 cursor-help" title={d.tip}>
                       {d.label}
@@ -313,7 +390,7 @@ export function Step2Prosessscoring({
                     <select
                       value={row.scores[d.key] ?? 3}
                       onChange={(e) => updateScore(activeTab, i, d.key, parseInt(e.target.value))}
-                      className="border border-slate-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                      className="border border-slate-300 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
                     >
                       {[1, 2, 3, 4, 5].map((v) => (
                         <option key={v} value={v}>{v}</option>
@@ -326,7 +403,7 @@ export function Step2Prosessscoring({
               <p className="text-xs text-slate-500 text-right">
                 Vekta snitt:{' '}
                 <span className="font-semibold text-[#1E293B]">
-                  {formatAvg(calcWeightedAvg(row.scores, weights))}
+                  {formatAvg(calcWeightedAvg(row.scores, weights, allDims))}
                 </span>
               </p>
             </div>
@@ -345,50 +422,60 @@ export function Step2Prosessscoring({
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
         <div>
           <h2 className="text-base font-semibold text-[#1E293B] mb-1">Tilrådingsoversikt</h2>
-          <p className="text-sm text-slate-500">Klikk ein prosess for å toggle om den skal takast med vidare.</p>
+          <p className="text-sm text-slate-500">Klikk eit kort for å toggle om heile verdikjedesteget skal takast med vidare.</p>
         </div>
 
         <div className="flex gap-4 flex-wrap">
-          {vcSteps.map((vs) => (
-            <div key={vs.id} className="flex-1 min-w-[180px] flex flex-col gap-2">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{vs.name}</p>
-              <div className="flex flex-col gap-1">
-                {(rows[vs.id] ?? []).filter((r) => r.name.trim()).length === 0 && (
-                  <p className="text-xs text-slate-400 italic">Ingen prosessar</p>
+          {vcSteps.map((vs) => {
+            const vsRows = rows[vs.id] ?? []
+            const filled = vsRows.filter((r) => r.name.trim())
+            const light = stepTrafficLight(vsRows, weights, allDims)
+            const avg = filled.length > 0
+              ? filled.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filled.length
+              : null
+            const allIncluded = filled.length > 0 && filled.every((r) => r.included)
+
+            const cardClass = light === 'green'
+              ? allIncluded
+                ? 'border-emerald-400 bg-emerald-50'
+                : 'border-emerald-200 bg-emerald-50 opacity-50'
+              : light === 'yellow'
+              ? allIncluded
+                ? 'border-amber-300 bg-amber-50'
+                : 'border-amber-100 bg-amber-50 opacity-50'
+              : allIncluded
+              ? 'border-red-300 bg-red-50'
+              : 'border-red-100 bg-red-50 opacity-50'
+
+            const labelClass = light === 'green'
+              ? 'text-emerald-800'
+              : light === 'yellow'
+              ? 'text-amber-800'
+              : 'text-red-800'
+
+            return (
+              <button
+                key={vs.id}
+                onClick={() => toggleStepIncluded(vs.id)}
+                className={`flex-1 min-w-[160px] text-left rounded-xl border-2 p-4 flex flex-col gap-2 transition-all hover:shadow-sm ${cardClass}`}
+                title="Klikk for å toggle inkludering"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor(light)}`} />
+                  <span className={`text-sm font-semibold ${labelClass}`}>{vs.name}</span>
+                </div>
+                {avg !== null && (
+                  <p className={`text-xs ${labelClass}`}>
+                    Snitt: <span className="font-bold">{formatAvg(avg)}</span>
+                  </p>
                 )}
-                {(rows[vs.id] ?? [])
-                  .map((r, idx) => ({ r, idx }))
-                  .filter(({ r }) => r.name.trim())
-                  .map(({ r: row, idx }) => {
-                    const light = trafficLight(row.scores, weights)
-                    const avg = calcWeightedAvg(row.scores, weights)
-                    const dimmed = !row.included
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => toggleIncluded(vs.id, idx)}
-                        className={`text-left text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-                          light === 'green'
-                            ? dimmed
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-400 line-through'
-                              : 'border-emerald-400 bg-emerald-50 text-emerald-700 font-medium'
-                            : light === 'yellow'
-                            ? dimmed
-                              ? 'border-amber-100 bg-amber-50 text-amber-300 line-through'
-                              : 'border-amber-300 bg-amber-50 text-amber-700'
-                            : dimmed
-                            ? 'border-red-100 bg-red-50 text-red-300 line-through'
-                            : 'border-red-300 bg-red-50 text-red-700'
-                        }`}
-                        title={`Snitt: ${formatAvg(avg)} | Data: ${row.scores['data'] ?? 3} | Klikk for å toggle`}
-                      >
-                        {row.name}
-                      </button>
-                    )
-                  })}
-              </div>
-            </div>
-          ))}
+                <p className="text-xs text-slate-500">{filled.length} prosess{filled.length !== 1 ? 'ar' : ''}</p>
+                <p className={`text-xs font-medium mt-1 ${allIncluded ? 'text-slate-700' : 'text-slate-400'}`}>
+                  {allIncluded ? '✓ Inkludert' : '✕ Ikkje inkludert'}
+                </p>
+              </button>
+            )
+          })}
         </div>
 
         <div className="flex gap-4 text-xs text-slate-500 mt-1 flex-wrap">
