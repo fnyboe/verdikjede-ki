@@ -19,7 +19,7 @@ export async function updatePassword(_prev: unknown, formData: FormData): Promis
   const supabase = createSupabaseServerClient()
   const { error } = await supabase.auth.updateUser({ password })
 
-  if (error) return { success: false, error: 'Kunne ikkje oppdatere passordet. Prøv igjen.' }
+  if (error) return { success: false, error: `Kunne ikkje oppdatere passordet: ${error.message}` }
 
   redirect('/dashboard')
 }

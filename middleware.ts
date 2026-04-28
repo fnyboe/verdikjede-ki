@@ -28,11 +28,12 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register') || pathname.startsWith('/set-password')
+  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/register')
+  const isSetPassword = pathname.startsWith('/set-password')
   const isCallbackRoute = pathname.startsWith('/auth/callback')
   const isApiRoute = pathname.startsWith('/api/')
 
-  if (!user && !isAuthRoute && !isCallbackRoute && !isApiRoute) {
+  if (!user && !isAuthRoute && !isSetPassword && !isCallbackRoute && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
