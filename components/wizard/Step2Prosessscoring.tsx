@@ -250,7 +250,9 @@ export function Step2Prosessscoring({
     }
 
     for (const vs of vcSteps) {
-      const result = await saveProcessesAction(analyseId, vs.id, rows[vs.id] ?? [])
+      const vsRows = rows[vs.id] ?? []
+      if (!vsRows.some((r) => r.name.trim().length > 0)) continue
+      const result = await saveProcessesAction(analyseId, vs.id, vsRows)
       if (!result.success) {
         setSaveError(result.error ?? 'Kunne ikkje lagre prosessar')
         setSaving(false)
@@ -274,7 +276,9 @@ export function Step2Prosessscoring({
     }
 
     for (const vs of vcSteps) {
-      const result = await saveProcessesAction(analyseId, vs.id, rows[vs.id] ?? [])
+      const vsRows = rows[vs.id] ?? []
+      if (!vsRows.some((r) => r.name.trim().length > 0)) continue
+      const result = await saveProcessesAction(analyseId, vs.id, vsRows)
       if (!result.success) {
         setSaveError(result.error ?? 'Kunne ikkje lagre prosessar')
         setSaving(false)
