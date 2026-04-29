@@ -160,7 +160,7 @@ export function Step2Prosessscoring({
 
   async function handleSelectTab(vsId: string, vsName: string) {
     setActiveTab(vsId)
-    if (!aiDone[vsId] && !aiLoading[vsId] && !isLoadingFromDB) {
+    if ((rows[vsId] ?? []).length === 0 && !aiLoading[vsId] && !isLoadingFromDB) {
       setAiLoading((prev) => ({ ...prev, [vsId]: true }))
       try {
         const res = await fetch('/api/ai', {
