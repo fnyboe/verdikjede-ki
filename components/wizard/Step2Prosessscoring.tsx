@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
+import { getProcessesForVcStepAction, saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
 import { DIMS } from '@/lib/constants'
 import type { VcStep, Process, Dim } from '@/types'
@@ -101,6 +101,19 @@ export function Step2Prosessscoring({
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!activeTab) return
+    getProcessesForVcStepAction(activeTab).then((result) => {
+      if (result.success && result.data && result.data.length > 0) {
+        setRows((prev) => ({ ...prev, [activeTab]: toRows(result.data!, weights, allDims) }))
+        if (result.data.some((p) => p.ai_suggestion !== null)) {
+          setAiDone((prev) => ({ ...prev, [activeTab]: true }))
+        }
+      }
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   useEffect(() => {
     const first = vcSteps[0]

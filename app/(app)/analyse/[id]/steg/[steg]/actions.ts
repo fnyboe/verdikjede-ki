@@ -2,8 +2,8 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { saveVcSteps } from '@/lib/db/vc_steps'
-import { saveProcesses, saveWeights } from '@/lib/db/processes'
-import type { ServerActionResult } from '@/types'
+import { getProcessesByVcStep, saveProcesses, saveWeights } from '@/lib/db/processes'
+import type { Process, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
   analyseId: string,
@@ -63,6 +63,15 @@ export async function saveProcessesAction(
   }
 
   return saveProcesses(vcStepId, analyseId, items)
+}
+
+export async function getProcessesForVcStepAction(
+  vcStepId: string
+): Promise<ServerActionResult<Process[]>> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  return getProcessesByVcStep(vcStepId)
 }
 
 export async function saveWeightsAction(
