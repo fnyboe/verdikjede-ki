@@ -92,9 +92,6 @@ export function Step2Prosessscoring({
   )
   const [activeTab, setActiveTab] = useState<string>(vcSteps[0]?.id ?? '')
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
-  const [aiDone, setAiDone] = useState<Record<string, boolean>>(
-    Object.fromEntries(vcSteps.map((vs) => [vs.id, false]))
-  )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
@@ -112,19 +109,14 @@ export function Step2Prosessscoring({
       setWeights(fetchedWeights)
 
       const rowUpdates: Record<string, ProcessRow[]> = {}
-      const aiDoneUpdates: Record<string, boolean> = {}
       for (const { vs, r } of allResults) {
         if (r.success && r.data && r.data.length > 0) {
           rowUpdates[vs.id] = toRows(r.data, fetchedWeights, [...DIMS])
-          if (r.data.some((p) => p.ai_suggestion !== null)) {
-            aiDoneUpdates[vs.id] = true
-          }
         }
       }
       const first = vcSteps[0]
       firstTabNeedsAI.current = !!first && !rowUpdates[first.id]?.length
       setRows((prev) => ({ ...prev, ...rowUpdates }))
-      setAiDone((prev) => ({ ...prev, ...aiDoneUpdates }))
       setIsLoadingFromDB(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -186,7 +178,6 @@ export function Step2Prosessscoring({
         // AI-feil er ikkje kritisk — brukaren kan legge til prosessar manuelt
       } finally {
         setAiLoading((prev) => ({ ...prev, [vsId]: false }))
-        setAiDone((prev) => ({ ...prev, [vsId]: true }))
       }
     }
   }
