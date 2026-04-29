@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { getProcessesForVcStepAction, getWeightsAction, saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
@@ -98,6 +98,7 @@ export function Step2Prosessscoring({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
+  const firstTabNeedsAI = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -120,6 +121,8 @@ export function Step2Prosessscoring({
           }
         }
       }
+      const first = vcSteps[0]
+      firstTabNeedsAI.current = !!first && !rowUpdates[first.id]?.length
       setRows((prev) => ({ ...prev, ...rowUpdates }))
       setAiDone((prev) => ({ ...prev, ...aiDoneUpdates }))
       setIsLoadingFromDB(false)
@@ -130,7 +133,8 @@ export function Step2Prosessscoring({
   useEffect(() => {
     if (isLoadingFromDB) return
     const first = vcSteps[0]
-    if (first && (rows[first.id] ?? []).length === 0) {
+    if (first && firstTabNeedsAI.current) {
+      firstTabNeedsAI.current = false
       handleSelectTab(first.id, first.name)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
