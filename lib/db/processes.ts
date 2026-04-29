@@ -32,13 +32,6 @@ export async function saveProcesses(
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
 
-  const { error: deleteError } = await supabase
-    .from('processes')
-    .delete()
-    .eq('vc_step_id', vcStepId)
-
-  if (deleteError) return { success: false, error: deleteError.message }
-
   const rows = items
     .map((item, i) => ({
       analysis_id: analysisId,
@@ -52,6 +45,13 @@ export async function saveProcesses(
     .filter((r) => r.name.length > 0)
 
   if (rows.length === 0) return { success: true }
+
+  const { error: deleteError } = await supabase
+    .from('processes')
+    .delete()
+    .eq('vc_step_id', vcStepId)
+
+  if (deleteError) return { success: false, error: deleteError.message }
 
   const { error: insertError } = await supabase.from('processes').insert(rows)
   if (insertError) return { success: false, error: insertError.message }
