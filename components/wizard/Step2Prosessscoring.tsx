@@ -101,6 +101,7 @@ export function Step2Prosessscoring({
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
 
   useEffect(() => {
     Promise.all(
@@ -118,13 +119,19 @@ export function Step2Prosessscoring({
       }
       setRows((prev) => ({ ...prev, ...rowUpdates }))
       setAiDone((prev) => ({ ...prev, ...aiDoneUpdates }))
-      const first = vcSteps[0]
-      if (first && !rowUpdates[first.id]?.length) {
-        handleSelectTab(first.id, first.name)
-      }
+      setIsLoadingFromDB(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (isLoadingFromDB) return
+    const first = vcSteps[0]
+    if (first && (rows[first.id] ?? []).length === 0) {
+      handleSelectTab(first.id, first.name)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoadingFromDB])
 
   const weightTotal = Object.values(weights).reduce((s, v) => s + v, 0)
   const weightsValid = weightTotal === 100
@@ -150,7 +157,7 @@ export function Step2Prosessscoring({
 
   async function handleSelectTab(vsId: string, vsName: string) {
     setActiveTab(vsId)
-    if (!aiDone[vsId] && !aiLoading[vsId]) {
+    if (!aiDone[vsId] && !aiLoading[vsId] && !isLoadingFromDB) {
       setAiLoading((prev) => ({ ...prev, [vsId]: true }))
       try {
         const res = await fetch('/api/ai', {
@@ -404,6 +411,16 @@ export function Step2Prosessscoring({
 
         {/* Aktivt tab-innhald */}
         <div className="p-6 flex flex-col gap-4">
+          {isLoadingFromDB ? (
+            <div className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-sm font-medium text-[#10B981]">Lastar prosessar...</p>
+            </div>
+          ) : (
+            <>
           {activeRows.length === 0 && !aiLoading[activeTab] && (
             <p className="text-sm text-slate-400 italic">Ingen prosessar enno. Legg til manuelt.</p>
           )}
@@ -471,6 +488,8 @@ export function Step2Prosessscoring({
           >
             + Legg til prosess
           </button>
+            </>
+          )}
         </div>
       </div>
 
