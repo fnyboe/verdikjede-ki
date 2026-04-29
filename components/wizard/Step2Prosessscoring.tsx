@@ -258,6 +258,7 @@ export function Step2Prosessscoring({
       }
     }
 
+    router.refresh()
     router.push(`/analyse/${analyseId}/steg/1`)
   }
 
