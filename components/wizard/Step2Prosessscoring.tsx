@@ -119,7 +119,7 @@ export function Step2Prosessscoring({
       setRows((prev) => ({ ...prev, ...rowUpdates }))
       setAiDone((prev) => ({ ...prev, ...aiDoneUpdates }))
       const first = vcSteps[0]
-      if (first && !aiDoneUpdates[first.id]) {
+      if (first && !rowUpdates[first.id]?.length) {
         handleSelectTab(first.id, first.name)
       }
     })
@@ -231,6 +231,29 @@ export function Step2Prosessscoring({
         ])
       )
     )
+  }
+
+  async function handleForrige() {
+    setSaveError(null)
+    setSaving(true)
+
+    const weightResult = await saveWeightsAction(analyseId, weights)
+    if (!weightResult.success) {
+      setSaveError(weightResult.error ?? 'Kunne ikkje lagre vekting')
+      setSaving(false)
+      return
+    }
+
+    for (const vs of vcSteps) {
+      const result = await saveProcessesAction(analyseId, vs.id, rows[vs.id] ?? [])
+      if (!result.success) {
+        setSaveError(result.error ?? 'Kunne ikkje lagre prosessar')
+        setSaving(false)
+        return
+      }
+    }
+
+    router.push(`/analyse/${analyseId}/steg/1`)
   }
 
   async function handleNeste() {
@@ -532,12 +555,13 @@ export function Step2Prosessscoring({
       )}
 
       <div className="flex justify-between">
-        <a
-          href={`/analyse/${analyseId}/steg/1`}
-          className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+        <Button
+          onClick={handleForrige}
+          disabled={saving}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50"
         >
-          ← Førre steg
-        </a>
+          {saving ? 'Lagrar...' : '← Førre steg'}
+        </Button>
         <Button
           onClick={handleNeste}
           disabled={!weightsValid || saving}
