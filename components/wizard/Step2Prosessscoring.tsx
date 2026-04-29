@@ -11,6 +11,7 @@ interface ProcessRow {
   name: string
   scores: Record<string, number>
   included: boolean
+  ai_suggestion: string | null
 }
 
 interface Props {
@@ -64,6 +65,7 @@ function toRows(processes: Process[], weights: Record<string, number>, allDims: 
       name: p.name,
       scores,
       included: typeof p.included === 'boolean' ? p.included : autoIncluded(scores, weights, allDims),
+      ai_suggestion: p.ai_suggestion ?? null,
     }
   })
 }
@@ -94,7 +96,7 @@ export function Step2Prosessscoring({
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
   const [aiDone, setAiDone] = useState<Record<string, boolean>>(
     Object.fromEntries(
-      vcSteps.map((vs) => [vs.id, (initialProcesses[vs.id] ?? []).length > 0])
+      vcSteps.map((vs) => [vs.id, (initialProcesses[vs.id] ?? []).some((p) => p.ai_suggestion !== null)])
     )
   )
   const [saving, setSaving] = useState(false)
@@ -146,7 +148,7 @@ export function Step2Prosessscoring({
             ...prev,
             [vsId]: json.processes.map((name: string) => {
               const scores = defaultScores(allDims)
-              return { name, scores, included: autoIncluded(scores, weights, allDims) }
+              return { name, scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: 'steg2' }
             }),
           }))
         }
@@ -181,7 +183,7 @@ export function Step2Prosessscoring({
     const scores = defaultScores(allDims)
     setRows((prev) => ({
       ...prev,
-      [vsId]: [...prev[vsId], { name: '', scores, included: autoIncluded(scores, weights, allDims) }],
+      [vsId]: [...prev[vsId], { name: '', scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: null }],
     }))
   }
 
@@ -235,6 +237,7 @@ export function Step2Prosessscoring({
       }
     }
 
+    router.refresh()
     router.push(`/analyse/${analyseId}/steg/3`)
   }
 

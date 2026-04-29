@@ -40,7 +40,7 @@ export async function saveVcStepsAction(
 export async function saveProcessesAction(
   analyseId: string,
   vcStepId: string,
-  items: { name: string; scores: Record<string, number>; included: boolean }[]
+  items: { name: string; scores: Record<string, number>; included: boolean; ai_suggestion: string | null }[]
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -87,11 +87,6 @@ export async function saveWeightsAction(
 
   if (!analyse || analyse.company_id !== profile?.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
-  }
-
-  const total = Object.values(weights).reduce((s, v) => s + v, 0)
-  if (total !== 100) {
-    return { success: false, error: 'Vektinga må summere til 100' }
   }
 
   return saveWeights(analyseId, weights)

@@ -28,7 +28,7 @@ export async function getProcessesByVcStep(vcStepId: string): Promise<ServerActi
 export async function saveProcesses(
   vcStepId: string,
   analysisId: string,
-  items: { name: string; scores: Record<string, number>; included: boolean }[]
+  items: { name: string; scores: Record<string, number>; included: boolean; ai_suggestion: string | null }[]
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
 
@@ -47,6 +47,7 @@ export async function saveProcesses(
       scores: item.scores,
       included: item.included,
       order_index: i,
+      ai_suggestion: item.ai_suggestion ?? null,
     }))
     .filter((r) => r.name.length > 0)
 
