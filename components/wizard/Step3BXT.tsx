@@ -30,13 +30,9 @@ const S_KEYS = ['alignment', 'biz_strategy', 'biz_value', 'biz_timeline']
 const F_KEYS = ['exp_personas', 'exp_value', 'exp_resistance', 'tech_risk', 'tech_security', 'tech_fit']
 
 function bxtAgg(bxt: Record<string, number | string>) {
-  const avg = (keys: string[]) => {
-    const scored = keys.map(k => Number(bxt[k] ?? 0)).filter(v => v > 0)
-    return scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : 0
-  }
-  const sA = avg(S_KEYS)
-  const fA = avg(F_KEYS)
-  const total = sA > 0 && fA > 0 ? (sA + fA) / 2 : 0
+  const sA = S_KEYS.reduce((a, k) => a + Number(bxt[k] ?? 3), 0) / S_KEYS.length
+  const fA = F_KEYS.reduce((a, k) => a + Number(bxt[k] ?? 3), 0) / F_KEYS.length
+  const total = (sA + fA) / 2
   return {
     sA: Math.round(sA * 10) / 10,
     fA: Math.round(fA * 10) / 10,
@@ -44,104 +40,89 @@ function bxtAgg(bxt: Record<string, number | string>) {
   }
 }
 
-function scoreColor(v: number) {
-  if (!v) return '#94A3B8'
-  if (v >= 4) return '#10B981'
-  if (v >= 2.5) return '#F59E0B'
-  return '#EF4444'
+function simpleAvg(scores: Record<string, number>) {
+  const vals = Object.values(scores).filter(v => v > 0)
+  if (!vals.length) return 0
+  return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10
+}
+
+function getScoreColor(v: number) {
+  const r = (v - 1) / 4
+  if (r >= 0.66) return { dot: '#10B981', bg: '#D1FAE5', text: '#065F46' }
+  if (r >= 0.33) return { dot: '#F59E0B', bg: '#FEF3C7', text: '#92400E' }
+  return { dot: '#EF4444', bg: '#FEE2E2', text: '#991B1B' }
 }
 
 type PlotProcess = Process & { sA: number; fA: number; total: number }
 
 function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
-  const W = 420
-  const H = 300
-  const ml = 52
-  const mt = 24
-  const mr = 20
-  const mb = 48
-  const pw = W - ml - mr
-  const ph = H - mt - mb
+  const W = 560
+  const H = 440
+  const PAD = 56
+  const PADT = 30
+  const cW = W - PAD * 2
+  const cH = H - PAD - PADT
 
-  const xPos = (fA: number) => ml + ((fA - 1) / 4) * pw
-  const yPos = (sA: number) => mt + ((5 - sA) / 4) * ph
-
-  const xMid = ml + pw / 2
-  const yMid = mt + ph / 2
-
-  const quadrants = [
-    { x: xMid + 6, y: mt + 14, label: 'Utfør oppgåveanalyse', color: '#3B82F6', bg: '#DBEAFE33' },
-    { x: ml + 6, y: mt + 14, label: 'Utforsk vidare', color: '#D97706', bg: '#FEF9C333' },
-    { x: xMid + 6, y: yMid + 16, label: 'Inkuber', color: '#10B981', bg: '#D1FAE533' },
-    { x: ml + 6, y: yMid + 16, label: 'Sett på vent', color: '#EF4444', bg: '#FEE2E233' },
-  ]
-
-  const plotted = processes.filter(p => p.sA > 0 && p.fA > 0)
+  const tx = (v: number) => PAD + (v / 5) * cW
+  const ty = (v: number) => PADT + cH - (v / 5) * cH
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full max-w-lg mx-auto">
-      {/* Quadrant backgrounds */}
-      <rect x={ml} y={mt} width={pw / 2} height={ph / 2} fill="#FEF9C3" opacity="0.35" />
-      <rect x={xMid} y={mt} width={pw / 2} height={ph / 2} fill="#DBEAFE" opacity="0.35" />
-      <rect x={ml} y={yMid} width={pw / 2} height={ph / 2} fill="#FEE2E2" opacity="0.35" />
-      <rect x={xMid} y={yMid} width={pw / 2} height={ph / 2} fill="#D1FAE5" opacity="0.35" />
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ fontFamily: "'DM Sans',sans-serif", overflow: 'visible' }}>
+      {/* Quadrant backgrounds — divided at score 3 */}
+      <rect x={tx(0)} y={ty(5)} width={tx(3) - tx(0)} height={ty(3) - ty(5)} fill="#FEF9C3" opacity="0.5" />
+      <rect x={tx(3)} y={ty(5)} width={tx(5) - tx(3)} height={ty(3) - ty(5)} fill="#DBEAFE" opacity="0.5" />
+      <rect x={tx(0)} y={ty(3)} width={tx(3) - tx(0)} height={ty(0) - ty(3)} fill="#FEE2E2" opacity="0.5" />
+      <rect x={tx(3)} y={ty(3)} width={tx(5) - tx(3)} height={ty(0) - ty(3)} fill="#D1FAE5" opacity="0.5" />
 
-      {/* Plot border */}
-      <rect x={ml} y={mt} width={pw} height={ph} fill="none" stroke="#CBD5E1" strokeWidth="1" />
-
-      {/* Midlines */}
-      <line x1={ml} y1={yMid} x2={ml + pw} y2={yMid} stroke="#94A3B8" strokeWidth="1" strokeDasharray="4 3" />
-      <line x1={xMid} y1={mt} x2={xMid} y2={mt + ph} stroke="#94A3B8" strokeWidth="1" strokeDasharray="4 3" />
-
-      {/* Quadrant labels */}
-      {quadrants.map((q, i) => (
-        <text key={i} x={q.x} y={q.y} fontSize="9" fill={q.color} fontWeight="700" opacity="0.85">{q.label}</text>
-      ))}
+      {/* Midlines at score 3 */}
+      <line x1={tx(3)} y1={ty(5)} x2={tx(3)} y2={ty(0)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
+      <line x1={tx(0)} y1={ty(3)} x2={tx(5)} y2={ty(3)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
 
       {/* Axis ticks */}
       {[1, 2, 3, 4, 5].map(v => (
         <g key={v}>
-          <text x={xPos(v)} y={mt + ph + 14} fontSize="9" fill="#94A3B8" textAnchor="middle">{v}</text>
-          <text x={ml - 7} y={yPos(v) + 4} fontSize="9" fill="#94A3B8" textAnchor="end">{v}</text>
+          <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={11} fill="#94A3B8">{v}</text>
+          <text x={PAD - 10} y={ty(v) + 4} textAnchor="end" fontSize={11} fill="#94A3B8">{v}</text>
         </g>
       ))}
+      <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={11} fill="#94A3B8">0</text>
+
+      {/* Quadrant labels */}
+      <text x={tx(0) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#D97706">Utforsk videre</text>
+      <text x={tx(0) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#D97706">(seinare)</text>
+      <text x={tx(3) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#3B82F6">Utfør</text>
+      <text x={tx(3) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#3B82F6">oppgåveanalyse</text>
+      <text x={tx(0) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#EF4444">Sett på vent</text>
+      <text x={tx(3) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#10B981">Inkuber</text>
+      <text x={tx(3) + 8} y={ty(3) + 28} fontSize={10} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
 
       {/* Axis labels */}
-      <text x={ml + pw / 2} y={H - 6} fontSize="10" fill="#64748B" textAnchor="middle" fontWeight="500">
-        Gjennomførbarhet (G)
+      <text x={tx(2.5)} y={H - 2} textAnchor="middle" fontSize={12} fontWeight="700" fill="#475569">
+        Grad av gjennomførbarhet
       </text>
       <text
-        x={14}
-        y={mt + ph / 2}
-        fontSize="10"
-        fill="#64748B"
+        x={12}
+        y={ty(2.5)}
         textAnchor="middle"
-        fontWeight="500"
-        transform={`rotate(-90, 14, ${mt + ph / 2})`}
+        fontSize={12}
+        fontWeight="700"
+        fill="#475569"
+        transform={`rotate(-90, 12, ${ty(2.5)})`}
       >
-        Forretningseffekt (S)
+        Grad av strategisk forretningseffekt
       </text>
 
-      {/* Process dots */}
-      {plotted.map(p => {
-        const cx = xPos(p.fA)
-        const cy = yPos(p.sA)
-        const fill = p.total >= 4 ? '#10B981' : p.total >= 2.5 ? '#F59E0B' : '#EF4444'
+      {/* Process dots + name labels */}
+      {processes.map(p => {
+        const cx = tx(p.fA)
+        const cy = ty(p.sA)
         return (
           <g key={p.id}>
-            <circle cx={cx} cy={cy} r={9} fill={fill} opacity="0.85" />
-            <circle cx={cx} cy={cy} r={9} fill="none" stroke="white" strokeWidth="1.5" />
-            <title>{p.name} (S: {p.sA}, G: {p.fA}, Total: {p.total})</title>
+            <circle cx={cx} cy={cy} r={7} fill="#1E293B" stroke="#fff" strokeWidth={2} />
+            <text x={cx + 12} y={cy + 4} fontSize={10} fontWeight="600" fill="#1E293B">{p.name}</text>
           </g>
         )
       })}
-
-      {/* Empty state */}
-      {plotted.length === 0 && (
-        <text x={ml + pw / 2} y={mt + ph / 2} fontSize="11" fill="#CBD5E1" textAnchor="middle">
-          Fyll ut BXT-scoring for å sjå prosessane her
-        </text>
-      )}
     </svg>
   )
 }
@@ -151,6 +132,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
 
   const [processes, setProcesses] = useState<Process[]>([])
+  const [activeVcId, setActiveVcId] = useState<string | null>(null)
   const [openId, setOpenId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<Record<string, 'problem' | 'bxt'>>({})
   const [entries, setEntries] = useState<Record<string, BxtEntry>>({})
@@ -178,10 +160,31 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
         }
       }
       setEntries(initEntries)
+      const firstVc = vcSteps.find(vs => included.some(p => p.vc_step_id === vs.id))
+      if (firstVc) setActiveVcId(firstVc.id)
       setIsLoadingFromDB(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // vc_steps that have at least one included process, with their tab score
+  const vcGroups = vcSteps
+    .map(vs => {
+      const procs = processes.filter(p => p.vc_step_id === vs.id && p.included)
+      if (!procs.length) return null
+      const tabScore = Math.round(
+        procs.reduce((s, p) => s + simpleAvg(p.scores), 0) / procs.length * 10
+      ) / 10
+      return { vs, procs, tabScore }
+    })
+    .filter((g): g is { vs: VcStep; procs: Process[]; tabScore: number } => g !== null)
+
+  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
+
+  const plotProcesses: PlotProcess[] = activeProcs.map(p => ({
+    ...p,
+    ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
+  }))
 
   async function handleOpen(process: Process) {
     if (openId === process.id) { setOpenId(null); return }
@@ -203,12 +206,14 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
       if (res.ok && typeof json.problem === 'string' && typeof json.ideas === 'string') {
         const cached = JSON.stringify({ problem: json.problem, ideas: json.ideas })
         const currentEntry = entries[process.id] ?? {
-          problem_desc: '', usecase_desc: '', business_goal: '', key_results: '', responsible: '', bxt_scores: {}
+          problem_desc: '', usecase_desc: '', business_goal: '', key_results: '', responsible: '', bxt_scores: {},
         }
         const updatedEntry: BxtEntry = { ...currentEntry, problem_desc: json.problem, usecase_desc: json.ideas }
         setEntries(prev => ({ ...prev, [process.id]: updatedEntry }))
         setProcesses(prev => prev.map(p =>
-          p.id === process.id ? { ...p, problem_desc: json.problem as string, usecase_desc: json.ideas as string, ai_suggestion: cached } : p
+          p.id === process.id
+            ? { ...p, problem_desc: json.problem as string, usecase_desc: json.ideas as string, ai_suggestion: cached }
+            : p
         ))
         await saveBxtDataAction(process.id, { ...updatedEntry, ai_suggestion: cached })
       }
@@ -230,56 +235,41 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   }
 
   async function handleToggleIncluded(processId: string) {
-    const process = processes.find(p => p.id === processId)
-    if (!process) return
-    const newIncluded = !process.included
-    setProcesses(prev => prev.map(p => p.id === processId ? { ...p, included: newIncluded } : p))
+    const p = processes.find(x => x.id === processId)
+    if (!p) return
+    const newIncluded = !p.included
+    setProcesses(prev => prev.map(x => x.id === processId ? { ...x, included: newIncluded } : x))
     await saveProcessIncludedAction(processId, newIncluded)
   }
 
   function setScore(processId: string, key: string, value: number) {
     setEntries(prev => ({
       ...prev,
-      [processId]: {
-        ...prev[processId],
-        bxt_scores: { ...prev[processId].bxt_scores, [key]: value },
-      },
+      [processId]: { ...prev[processId], bxt_scores: { ...prev[processId].bxt_scores, [key]: value } },
     }))
   }
 
   function setComment(processId: string, key: string, value: string) {
     setEntries(prev => ({
       ...prev,
-      [processId]: {
-        ...prev[processId],
-        bxt_scores: { ...prev[processId].bxt_scores, [`${key}_comment`]: value },
-      },
+      [processId]: { ...prev[processId], bxt_scores: { ...prev[processId].bxt_scores, [`${key}_comment`]: value } },
     }))
   }
 
   function setTextField(processId: string, field: keyof Omit<BxtEntry, 'bxt_scores'>, value: string) {
-    setEntries(prev => ({
-      ...prev,
-      [processId]: { ...prev[processId], [field]: value },
-    }))
+    setEntries(prev => ({ ...prev, [processId]: { ...prev[processId], [field]: value } }))
   }
-
-  const plotProcesses: PlotProcess[] = processes.map(p => ({
-    ...p,
-    ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
-  }))
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-2">
-        <h2 className="text-base font-semibold text-[#1E293B]">BXT-analyse per prosess</h2>
+        <h2 className="text-xl font-bold text-[#1E293B]">Vurder prosessteg — subjektivt</h2>
         <p className="text-sm text-slate-500">
-          Opne kvar prosess for å fylle ut problemanalyse og BXT-scoring. KI genererer startpunkt for tekstfelta automatisk.
+          Her er verdikjedestegene du tok med videre fra objektiv vurdering av KI-egnethet i Steg 2 (med score i parentes).
         </p>
       </div>
 
-      {/* Process list */}
       {isLoadingFromDB ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -293,276 +283,272 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
           Ingen inkluderte prosessar funne. Gå tilbake til steg 2 og merk prosessar som inkludert.
         </div>
       ) : (
-        <div className="flex flex-col gap-2">
-          {processes.map(process => {
-            const isOpen = openId === process.id
-            const isAiLoading = aiLoading[process.id] ?? false
-            const isSaving = saving[process.id] ?? false
-            const entry = entries[process.id] ?? {
-              problem_desc: '', usecase_desc: '', business_goal: '', key_results: '', responsible: '', bxt_scores: {}
-            }
-            const tab = activeTab[process.id] ?? 'problem'
-            const { sA, fA, total } = bxtAgg(entry.bxt_scores)
-            const hasText = !!(entry.problem_desc || entry.usecase_desc)
-
-            return (
-              <div key={process.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                {/* Header */}
-                <button
-                  onClick={() => handleOpen(process)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#1E293B] truncate">{process.name}</p>
-                      <p className="text-xs text-slate-400">{vcStepNames[process.vc_step_id ?? ''] ?? ''}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {isAiLoading && (
-                        <span className="text-xs text-[#10B981] animate-pulse font-medium">Genererer...</span>
-                      )}
-                      {total > 0 && (
-                        <>
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">S: {sA}</span>
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">G: {fA}</span>
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full font-medium text-white"
-                            style={{ backgroundColor: scoreColor(total) }}
-                          >
-                            {total}
-                          </span>
-                        </>
-                      )}
-                      {hasText && !isAiLoading && total === 0 && (
-                        <span className="text-xs text-emerald-600 font-medium">✓</span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-slate-400 text-sm ml-4 shrink-0">{isOpen ? '▲' : '▼'}</span>
-                </button>
-
-                {/* Body */}
-                {isOpen && (
-                  <div className="border-t border-slate-100">
-                    {isAiLoading && (
-                      <div className="flex items-center gap-2 px-5 py-4">
-                        <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <p className="text-sm font-medium text-[#10B981]">Genererer KI-forslag...</p>
-                      </div>
-                    )}
-
-                    {/* Tab nav */}
-                    <div className="flex border-b border-slate-100 px-5">
-                      {(['problem', 'bxt'] as const).map(t => (
-                        <button
-                          key={t}
-                          onClick={() => setActiveTab(prev => ({ ...prev, [process.id]: t }))}
-                          className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-                            tab === t
-                              ? 'border-[#10B981] text-[#10B981]'
-                              : 'border-transparent text-slate-500 hover:text-slate-700'
-                          }`}
-                        >
-                          {t === 'problem' ? 'Tekstanalyse' : 'BXT-scoring'}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="px-5 pb-5 pt-4 flex flex-col gap-4">
-                      {tab === 'problem' ? (
-                        <>
-                          {(
-                            [
-                              {
-                                field: 'problem_desc' as const,
-                                label: 'Problembeskrivelse',
-                                help: 'Kva problem eller ineffektivitet i denne prosessen kan KI adressere?',
-                                placeholder: 'Beskriv problemet...',
-                                rows: 3,
-                              },
-                              {
-                                field: 'usecase_desc' as const,
-                                label: 'KI-bruksområde',
-                                help: 'Konkrete idear for korleis KI eller automatisering kan brukast her.',
-                                placeholder: 'Beskriv bruksområde...',
-                                rows: 3,
-                              },
-                              {
-                                field: 'business_goal' as const,
-                                label: 'Forretningsmål',
-                                help: 'Kva forretningsmål støttar dette initiativet?',
-                                placeholder: 'Beskriv forretningsmålet...',
-                                rows: 2,
-                              },
-                              {
-                                field: 'key_results' as const,
-                                label: 'Nøkkelresultat',
-                                help: 'Kva målbare resultat forventar du?',
-                                placeholder: 'Beskriv nøkkelresultat...',
-                                rows: 2,
-                              },
-                              {
-                                field: 'responsible' as const,
-                                label: 'Ansvarleg',
-                                help: 'Kven er ansvarleg for dette initiativet?',
-                                placeholder: 'Namn eller rolle...',
-                                rows: 1,
-                              },
-                            ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; help: string; placeholder: string; rows: number }[]
-                          ).map(({ field, label, help, placeholder, rows }) => (
-                            <div key={field} className="flex flex-col gap-1">
-                              <label className="text-sm font-medium text-[#1E293B]">{label}</label>
-                              <p className="text-xs text-slate-400">{help}</p>
-                              <textarea
-                                value={entry[field]}
-                                onChange={e => setTextField(process.id, field, e.target.value)}
-                                rows={rows}
-                                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] resize-none"
-                                placeholder={placeholder}
-                              />
-                            </div>
-                          ))}
-                        </>
-                      ) : (
-                        <div className="flex flex-col gap-6">
-                          {BXT_CATS.map(cat => (
-                            <div key={cat.key} className="flex flex-col gap-3">
-                              <h4
-                                className="text-xs font-bold uppercase tracking-wider"
-                                style={{ color: cat.color }}
-                              >
-                                {cat.label}
-                              </h4>
-                              {cat.items.map(item => (
-                                <div
-                                  key={item.key}
-                                  className="flex flex-col gap-2 pl-3 border-l-2"
-                                  style={{ borderColor: cat.color + '44' }}
-                                >
-                                  <div className="flex items-start justify-between gap-4">
-                                    <p
-                                      className="text-sm font-medium text-[#1E293B] mt-1"
-                                      title={item.tip}
-                                    >
-                                      {item.label}
-                                    </p>
-                                    <div className="flex gap-1 shrink-0">
-                                      {[1, 2, 3, 4, 5].map(n => (
-                                        <button
-                                          key={n}
-                                          type="button"
-                                          onClick={() => setScore(process.id, item.key, n)}
-                                          className={`w-8 h-8 rounded text-xs font-semibold transition-colors ${
-                                            Number(entry.bxt_scores[item.key] ?? 0) === n
-                                              ? 'bg-[#1E293B] text-white'
-                                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                          }`}
-                                        >
-                                          {n}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <textarea
-                                    value={String(entry.bxt_scores[`${item.key}_comment`] ?? '')}
-                                    onChange={e => setComment(process.id, item.key, e.target.value)}
-                                    rows={2}
-                                    className="border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none text-slate-600 placeholder-slate-300"
-                                    placeholder="Kommentar (valfri)..."
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {saveError && openId === process.id && (
-                        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                          {saveError}
-                        </p>
-                      )}
-
-                      <Button
-                        onClick={() => handleSave(process.id)}
-                        disabled={isSaving}
-                        className="self-start bg-[#1E293B] hover:bg-slate-700 text-white disabled:opacity-50"
-                      >
-                        {isSaving ? 'Lagrar...' : 'Lagre'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Scatter plot */}
-      {!isLoadingFromDB && processes.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-[#1E293B]">Prioriteringsmatrise</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Forretningseffekt (S) mot gjennomførbarhet (G). Fyll ut BXT-scoring for å plotte prosessane.
-            </p>
-          </div>
-          <ScatterPlot processes={plotProcesses} />
-        </div>
-      )}
-
-      {/* Summary grid */}
-      {!isLoadingFromDB && processes.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-[#1E293B]">Oppsummering</h3>
-            <p className="text-xs text-slate-400 mt-1">
-              Klikk på ein prosess for å inkludere eller ekskludere han frå steg 4.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {processes.map(p => {
-              const { sA, fA, total } = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
-              const color = scoreColor(total)
+        <>
+          {/* vc_step tab navigation */}
+          <div className="flex gap-2 flex-wrap">
+            {vcGroups.map(({ vs, tabScore }) => {
+              const active = vs.id === activeVcId
               return (
                 <button
-                  key={p.id}
-                  onClick={() => handleToggleIncluded(p.id)}
-                  className={`rounded-lg border-2 p-3 text-left transition-all hover:shadow-sm ${
-                    p.included
-                      ? total >= 4
-                        ? 'border-[#10B981] bg-emerald-50'
-                        : 'border-slate-200 hover:border-slate-300'
-                      : 'border-slate-200 opacity-50 hover:opacity-70 bg-slate-50'
+                  key={vs.id}
+                  onClick={() => { setActiveVcId(vs.id); setOpenId(null) }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                    active
+                      ? 'bg-[#1E293B] text-white border-[#1E293B]'
+                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <p className="text-xs font-semibold text-[#1E293B] line-clamp-2 mb-2">{p.name}</p>
-                  <div className="flex gap-1 flex-wrap">
-                    <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium">
-                      S: {sA || '–'}
-                    </span>
-                    <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">
-                      G: {fA || '–'}
-                    </span>
-                    <span
-                      className="text-xs px-1.5 py-0.5 rounded font-medium text-white"
-                      style={{ backgroundColor: color }}
-                    >
-                      {total || '–'}
-                    </span>
-                  </div>
-                  {!p.included && (
-                    <p className="text-xs text-slate-400 mt-1.5">Ekskludert</p>
-                  )}
+                  {vs.name}{' '}
+                  <span className={`font-normal text-xs ${active ? 'opacity-70' : 'opacity-60'}`}>
+                    ({tabScore})
+                  </span>
                 </button>
               )
             })}
           </div>
-        </div>
+
+          {/* Instruction paragraphs */}
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Vurder forretningsverdi, brukeropplevelse og teknisk gjennomførbarhet for hvert prosessteg. Alle score skal settes basert på felles forståelse og er en indikasjon på strategisk KI-egnethet for prosessteg, ikke en fasit.
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Prosessteg med snitt ≥ 4 anbefales videre — markert med tykk ramme i bunnen. Klikk for å ta med eller fjerne.
+            </p>
+          </div>
+
+          {/* Accordion list — scoped to active vc_step */}
+          <div className="flex flex-col gap-2">
+            {activeProcs.map(process => {
+              const isOpen = openId === process.id
+              const isAiLoading = aiLoading[process.id] ?? false
+              const isSaving = saving[process.id] ?? false
+              const entry = entries[process.id] ?? {
+                problem_desc: '', usecase_desc: '', business_goal: '', key_results: '', responsible: '', bxt_scores: {},
+              }
+              const tab = activeTab[process.id] ?? 'problem'
+              const agg = bxtAgg(entry.bxt_scores)
+              const col = getScoreColor(agg.total)
+
+              return (
+                <div
+                  key={process.id}
+                  className="rounded-xl overflow-hidden"
+                  style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0' }}
+                >
+                  {/* Accordion header */}
+                  <button
+                    onClick={() => handleOpen(process)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
+                    style={{ background: isOpen ? '#1E293B' : '#FAFBFC', color: isOpen ? '#F8FAFC' : '#1E293B' }}
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: isOpen ? '#F8FAFC' : col.dot }}
+                      />
+                      <span className="text-sm font-bold truncate">{process.name}</span>
+                      {isAiLoading && (
+                        <span className="text-xs font-normal italic opacity-70 shrink-0">✦ Genererer KI-forslag...</span>
+                      )}
+                    </span>
+                    <span className="flex items-center gap-2 text-xs ml-3 shrink-0">
+                      <span style={{ opacity: 0.65 }}>S:{agg.sA} G:{agg.fA}</span>
+                      <span
+                        className="px-2 py-0.5 rounded font-bold"
+                        style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#F1F5F9' }}
+                      >
+                        {agg.total}
+                      </span>
+                      <span
+                        className="px-2 py-0.5 rounded text-xs"
+                        style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#E2E8F0', color: isOpen ? '#F8FAFC' : '#64748B' }}
+                      >
+                        {isOpen ? 'Lukk ▲' : 'Åpne ▼'}
+                      </span>
+                    </span>
+                  </button>
+
+                  {/* Accordion body */}
+                  {isOpen && (
+                    <div className="bg-white">
+                      {isAiLoading && (
+                        <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
+                          <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          <p className="text-sm font-medium text-[#10B981]">Genererer KI-forslag...</p>
+                        </div>
+                      )}
+
+                      {/* Tab nav */}
+                      <div className="flex border-b border-slate-100 px-5">
+                        {(['problem', 'bxt'] as const).map(t => (
+                          <button
+                            key={t}
+                            onClick={() => setActiveTab(prev => ({ ...prev, [process.id]: t }))}
+                            className={`py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                              tab === t
+                                ? 'border-[#10B981] text-[#10B981]'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            {t === 'problem' ? 'Tekstanalyse' : 'BXT-scoring'}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="px-5 pb-5 pt-4 flex flex-col gap-4">
+                        {tab === 'problem' ? (
+                          <div className="flex flex-col gap-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-[#1E293B] pb-2 border-b border-[#1E293B22]">
+                              Problemstilling, KI-idé og mål
+                            </p>
+                            <div className="grid gap-x-3 gap-y-2 items-start" style={{ gridTemplateColumns: '175px 1fr' }}>
+                              {(
+                                [
+                                  { field: 'problem_desc' as const, label: 'Problem som skal løses', placeholder: isAiLoading ? 'Genererer...' : 'Kva er utfordringa?', rows: 2 },
+                                  { field: 'usecase_desc' as const, label: 'KI-brukstilfelle', placeholder: isAiLoading ? 'Genererer KI-idéar...' : 'Idé for KI-løysing', rows: 3 },
+                                  { field: 'business_goal' as const, label: 'Forretningsmål', placeholder: 'Beskriv forretningsmålet', rows: 1 },
+                                  { field: 'key_results' as const, label: 'Nøkkelresultat', placeholder: '3–5 målbare nøkkelresultat', rows: 1 },
+                                  { field: 'responsible' as const, label: 'Ansvarleg', placeholder: 'Rolle, namn, avdeling', rows: 1 },
+                                ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; placeholder: string; rows: number }[]
+                              ).map(({ field, label, placeholder, rows }) => (
+                                <>
+                                  <span key={`${field}-label`} className="text-sm text-slate-600 font-semibold pt-1.5">{label}</span>
+                                  <textarea
+                                    key={`${field}-input`}
+                                    rows={rows}
+                                    placeholder={placeholder}
+                                    value={entry[field]}
+                                    onChange={e => setTextField(process.id, field, e.target.value)}
+                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-y leading-relaxed w-full"
+                                    style={{ background: isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
+                                  />
+                                </>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-5">
+                            {BXT_CATS.map(cat => (
+                              <div key={cat.key}>
+                                <p
+                                  className="text-xs font-bold uppercase tracking-wider pb-2 mb-3 border-b"
+                                  style={{ color: cat.color, borderColor: cat.color + '22' }}
+                                >
+                                  {cat.label}
+                                </p>
+                                <div className="grid gap-x-2.5 gap-y-1.5 items-center" style={{ gridTemplateColumns: '175px 1fr 58px' }}>
+                                  {cat.items.map(item => (
+                                    <>
+                                      <span key={`${item.key}-label`} className="text-xs text-slate-600" title={item.tip}>{item.label}</span>
+                                      <input
+                                        key={`${item.key}-comment`}
+                                        type="text"
+                                        placeholder="Kommentar..."
+                                        value={String(entry.bxt_scores[`${item.key}_comment`] ?? '')}
+                                        onChange={e => setComment(process.id, item.key, e.target.value)}
+                                        className="px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full"
+                                      />
+                                      <select
+                                        key={`${item.key}-score`}
+                                        value={Number(entry.bxt_scores[item.key] ?? 3)}
+                                        onChange={e => setScore(process.id, item.key, Number(e.target.value))}
+                                        className="w-full py-1.5 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer"
+                                      >
+                                        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                                      </select>
+                                    </>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {saveError && openId === process.id && (
+                          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{saveError}</p>
+                        )}
+
+                        <Button
+                          onClick={() => handleSave(process.id)}
+                          disabled={isSaving}
+                          className="self-start bg-[#1E293B] hover:bg-slate-700 text-white disabled:opacity-50"
+                        >
+                          {isSaving ? 'Lagrar...' : 'Lagre'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Scatter plot — scoped to active vc_step */}
+          {activeProcs.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-6">
+              <h3 className="text-base font-bold text-[#1E293B] mb-4">KI-egnethet (indikasjon)</h3>
+              <div className="overflow-x-auto">
+                <ScatterPlot processes={plotProcesses} />
+              </div>
+            </div>
+          )}
+
+          {/* Summary grid — scoped to active vc_step */}
+          {activeProcs.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
+              <div>
+                <h3 className="text-base font-bold text-[#1E293B]">Prosessteg videre til oppgåveanalyse</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Prosessteg med snitt ≥ 4 anbefales videre (markert med tykk ramme). Klikk for å ta med eller fjerne.
+                </p>
+              </div>
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: `repeat(${Math.min(activeProcs.length, 4)}, 1fr)` }}
+              >
+                {activeProcs.map(p => {
+                  const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
+                  const q = agg.total >= 4
+                  const col = getScoreColor(agg.total)
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => handleToggleIncluded(p.id)}
+                      className="cursor-pointer rounded-xl p-3 text-center transition-all"
+                      style={{
+                        background: p.included ? col.bg : '#F8FAFC',
+                        border: q
+                          ? `4px solid ${col.dot}`
+                          : p.included
+                          ? `2px solid ${col.dot}88`
+                          : '2px solid #E2E8F0',
+                        opacity: p.included ? 1 : 0.5,
+                      }}
+                    >
+                      <span
+                        className="inline-block w-3 h-3 rounded-full mb-1.5"
+                        style={{ backgroundColor: p.included ? col.dot : '#CBD5E1' }}
+                      />
+                      <div className="text-2xl font-bold mb-0.5" style={{ color: col.text }}>{agg.total}</div>
+                      <div className="text-xs font-bold break-words" style={{ color: col.text }}>{p.name}</div>
+                      <div className="text-xs opacity-70 mt-0.5">S:{agg.sA} G:{agg.fA}</div>
+                      <div
+                        className="mt-2 inline-block px-2 py-0.5 rounded text-xs font-bold"
+                        style={{ background: p.included ? '#D1FAE5' : '#E2E8F0', color: p.included ? '#065F46' : '#64748B' }}
+                      >
+                        {p.included ? '✓ Inkludert' : 'Ikkje inkludert'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Navigation */}
