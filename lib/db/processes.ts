@@ -80,6 +80,48 @@ export async function updateProcessDesc(
   return { success: true }
 }
 
+export async function saveBxtData(
+  processId: string,
+  data: {
+    problem_desc: string
+    usecase_desc: string
+    business_goal: string
+    key_results: string
+    responsible: string
+    bxt_scores: Record<string, number | string>
+    ai_suggestion: string | null
+  }
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase
+    .from('processes')
+    .update({
+      problem_desc: data.problem_desc,
+      usecase_desc: data.usecase_desc,
+      business_goal: data.business_goal,
+      key_results: data.key_results,
+      responsible: data.responsible,
+      bxt_scores: data.bxt_scores,
+      ai_suggestion: data.ai_suggestion,
+    })
+    .eq('id', processId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function saveProcessIncluded(
+  processId: string,
+  included: boolean
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase
+    .from('processes')
+    .update({ included })
+    .eq('id', processId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function saveWeights(
   analysisId: string,
   weights: Record<string, number>

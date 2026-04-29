@@ -33,6 +33,10 @@ export interface Process {
   included: boolean
   problem_desc: string | null
   usecase_desc: string | null
+  business_goal: string | null
+  key_results: string | null
+  responsible: string | null
+  bxt_scores: Record<string, number | string> | null
   ai_suggestion: string | null
   created_at: string
 }
