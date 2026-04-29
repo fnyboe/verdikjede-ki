@@ -95,6 +95,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg }: Props) {
       setSaving(false)
       return
     }
+    router.refresh()
     router.push(`/analyse/${analyseId}/steg/2`)
   }
 

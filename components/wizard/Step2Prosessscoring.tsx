@@ -576,7 +576,7 @@ export function Step2Prosessscoring({
       <div className="flex justify-between">
         <Button
           onClick={handleForrige}
-          disabled={saving}
+          disabled={saving || isLoadingFromDB}
           className="bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50"
         >
           {saving ? 'Lagrar...' : '← Førre steg'}
