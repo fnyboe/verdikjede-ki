@@ -103,23 +103,26 @@ export function Step2Prosessscoring({
   const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!activeTab) return
-    getProcessesForVcStepAction(activeTab).then((result) => {
-      if (result.success && result.data && result.data.length > 0) {
-        setRows((prev) => ({ ...prev, [activeTab]: toRows(result.data!, weights, allDims) }))
-        if (result.data.some((p) => p.ai_suggestion !== null)) {
-          setAiDone((prev) => ({ ...prev, [activeTab]: true }))
+    Promise.all(
+      vcSteps.map((vs) => getProcessesForVcStepAction(vs.id).then((r) => ({ vs, r })))
+    ).then((allResults) => {
+      const rowUpdates: Record<string, ProcessRow[]> = {}
+      const aiDoneUpdates: Record<string, boolean> = {}
+      for (const { vs, r } of allResults) {
+        if (r.success && r.data && r.data.length > 0) {
+          rowUpdates[vs.id] = toRows(r.data, weights, allDims)
+          if (r.data.some((p) => p.ai_suggestion !== null)) {
+            aiDoneUpdates[vs.id] = true
+          }
         }
       }
+      setRows((prev) => ({ ...prev, ...rowUpdates }))
+      setAiDone((prev) => ({ ...prev, ...aiDoneUpdates }))
+      const first = vcSteps[0]
+      if (first && !aiDoneUpdates[first.id]) {
+        handleSelectTab(first.id, first.name)
+      }
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab])
-
-  useEffect(() => {
-    const first = vcSteps[0]
-    if (first && !aiDone[first.id] && !aiLoading[first.id]) {
-      handleSelectTab(first.id, first.name)
-    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
