@@ -74,6 +74,23 @@ export async function getProcessesForVcStepAction(
   return getProcessesByVcStep(vcStepId)
 }
 
+export async function getWeightsAction(
+  analyseId: string
+): Promise<ServerActionResult<Record<string, number>>> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+
+  const { data, error } = await supabase
+    .from('analyses')
+    .select('weights')
+    .eq('id', analyseId)
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: (data.weights ?? {}) as Record<string, number> }
+}
+
 export async function saveWeightsAction(
   analyseId: string,
   weights: Record<string, number>

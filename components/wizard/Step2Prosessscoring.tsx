@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getProcessesForVcStepAction, saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
+import { getProcessesForVcStepAction, getWeightsAction, saveProcessesAction, saveWeightsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
 import { DIMS } from '@/lib/constants'
 import type { VcStep, Process, Dim } from '@/types'
@@ -14,12 +14,14 @@ interface ProcessRow {
   ai_suggestion: string | null
 }
 
+const DEFAULT_WEIGHTS: Record<string, number> = {
+  operational: 20, process: 20, data: 20, risk: 20, change: 20,
+}
+
 interface Props {
   analyseId: string
   analysisTitle: string
   vcSteps: VcStep[]
-  initialProcesses: Record<string, Process[]>
-  initialWeights: Record<string, number>
 }
 
 function defaultScores(allDims: Dim[]): Record<string, number> {
@@ -74,8 +76,6 @@ export function Step2Prosessscoring({
   analyseId,
   analysisTitle,
   vcSteps,
-  initialProcesses,
-  initialWeights,
 }: Props) {
   const router = useRouter()
 
@@ -86,32 +86,35 @@ export function Step2Prosessscoring({
 
   const allDims: Dim[] = [...DIMS, ...customDims]
 
-  const [weights, setWeights] = useState<Record<string, number>>(initialWeights)
+  const [weights, setWeights] = useState<Record<string, number>>(DEFAULT_WEIGHTS)
   const [rows, setRows] = useState<Record<string, ProcessRow[]>>(
-    Object.fromEntries(
-      vcSteps.map((vs) => [vs.id, toRows(initialProcesses[vs.id] ?? [], initialWeights, [...DIMS])])
-    )
+    Object.fromEntries(vcSteps.map((vs) => [vs.id, []]))
   )
   const [activeTab, setActiveTab] = useState<string>(vcSteps[0]?.id ?? '')
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
   const [aiDone, setAiDone] = useState<Record<string, boolean>>(
-    Object.fromEntries(
-      vcSteps.map((vs) => [vs.id, (initialProcesses[vs.id] ?? []).some((p) => p.ai_suggestion !== null)])
-    )
+    Object.fromEntries(vcSteps.map((vs) => [vs.id, false]))
   )
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
 
   useEffect(() => {
-    Promise.all(
-      vcSteps.map((vs) => getProcessesForVcStepAction(vs.id).then((r) => ({ vs, r })))
-    ).then((allResults) => {
+    Promise.all([
+      getWeightsAction(analyseId),
+      Promise.all(vcSteps.map((vs) => getProcessesForVcStepAction(vs.id).then((r) => ({ vs, r })))),
+    ]).then(([weightsResult, allResults]) => {
+      const fetchedWeights =
+        weightsResult.success && weightsResult.data && Object.keys(weightsResult.data).length > 0
+          ? weightsResult.data
+          : DEFAULT_WEIGHTS
+      setWeights(fetchedWeights)
+
       const rowUpdates: Record<string, ProcessRow[]> = {}
       const aiDoneUpdates: Record<string, boolean> = {}
       for (const { vs, r } of allResults) {
         if (r.success && r.data && r.data.length > 0) {
-          rowUpdates[vs.id] = toRows(r.data, weights, allDims)
+          rowUpdates[vs.id] = toRows(r.data, fetchedWeights, [...DIMS])
           if (r.data.some((p) => p.ai_suggestion !== null)) {
             aiDoneUpdates[vs.id] = true
           }

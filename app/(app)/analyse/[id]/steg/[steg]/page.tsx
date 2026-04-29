@@ -3,13 +3,12 @@ export const dynamic = 'force-dynamic'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
-import { getProcessesByVcStep } from '@/lib/db/processes'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Step1Verdikjede } from '@/components/wizard/Step1Verdikjede'
 import { Step2Prosessscoring } from '@/components/wizard/Step2Prosessscoring'
 import { WizardSteps } from '@/components/wizard/WizardSteps'
-import type { Process, VcStep } from '@/types'
+import type { VcStep } from '@/types'
 
 interface Props {
   params: Promise<{ id: string; steg: string }>
@@ -47,14 +46,6 @@ export default async function StegPage({ params }: Props) {
     const vcResult = await getVcStepsByAnalysis(id)
     const vcSteps: VcStep[] = vcResult.data ?? []
 
-    const processesPerStep: Record<string, Process[]> = {}
-    await Promise.all(
-      vcSteps.map(async (vs) => {
-        const r = await getProcessesByVcStep(vs.id)
-        processesPerStep[vs.id] = r.data ?? []
-      })
-    )
-
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
@@ -65,8 +56,6 @@ export default async function StegPage({ params }: Props) {
           analyseId={id}
           analysisTitle={analyse.title}
           vcSteps={vcSteps}
-          initialProcesses={processesPerStep}
-          initialWeights={analyse.weights ?? { operational: 20, process: 20, data: 20, risk: 20, change: 20 }}
         />
       </div>
     )
