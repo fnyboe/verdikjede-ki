@@ -2,7 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { saveVcSteps } from '@/lib/db/vc_steps'
-import { getProcessesByVcStep, saveProcesses, saveWeights } from '@/lib/db/processes'
+import { getProcessesByVcStep, saveProcesses, saveWeights, updateProcessDesc } from '@/lib/db/processes'
 import type { Process, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
@@ -89,6 +89,43 @@ export async function getWeightsAction(
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: (data.weights ?? {}) as Record<string, number> }
+}
+
+export async function saveProcessDescAction(
+  processId: string,
+  problemDesc: string,
+  usecaseDesc: string,
+  aiSuggestion: string | null
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+
+  const { data: process } = await supabase
+    .from('processes')
+    .select('analysis_id')
+    .eq('id', processId)
+    .single()
+
+  if (!process) return { success: false, error: 'Prosess ikkje funnen' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  const { data: analyse } = await supabase
+    .from('analyses')
+    .select('company_id')
+    .eq('id', process.analysis_id)
+    .single()
+
+  if (!analyse || analyse.company_id !== profile?.company_id) {
+    return { success: false, error: 'Ingen tilgang' }
+  }
+
+  return updateProcessDesc(processId, problemDesc, usecaseDesc, aiSuggestion)
 }
 
 export async function saveWeightsAction(

@@ -59,6 +59,27 @@ export async function saveProcesses(
   return { success: true }
 }
 
+export async function updateProcessDesc(
+  processId: string,
+  problemDesc: string,
+  usecaseDesc: string,
+  aiSuggestion: string | null
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+
+  const { error } = await supabase
+    .from('processes')
+    .update({
+      problem_desc: problemDesc,
+      usecase_desc: usecaseDesc,
+      ai_suggestion: aiSuggestion,
+    })
+    .eq('id', processId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function saveWeights(
   analysisId: string,
   weights: Record<string, number>

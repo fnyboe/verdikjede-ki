@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
       return handleSteg2(body)
     }
 
+    if (action === 'steg3') {
+      return handleSteg3(body)
+    }
+
     return NextResponse.json({ error: 'Ukjend action' }, { status: 400 })
   } catch (err) {
     console.error('[api/ai] error:', err)
@@ -134,4 +138,53 @@ async function handleSteg2(body: Record<string, unknown>) {
   }
 
   return NextResponse.json({ processes: parsed.processes })
+}
+
+async function handleSteg3(body: Record<string, unknown>) {
+  const { processName, vcStepName, analysisTitle } = body as {
+    processName?: string
+    vcStepName?: string
+    analysisTitle?: string
+  }
+
+  if (!processName?.trim()) {
+    return NextResponse.json({ error: 'processName er påkravd' }, { status: 400 })
+  }
+
+  const promptText = [
+    'Du er ein KI-rådgjevar som hjelper norske bedrifter å identifisere moglegheiter for KI og automatisering.',
+    `Bedrift/analyse: ${analysisTitle ?? ''}`,
+    `Verdikjedesteg: ${vcStepName ?? ''}`,
+    `Prosess: ${processName}`,
+    '',
+    'Generer to ting på norsk:',
+    '1. problem: Beskriv kort (2–4 setningar) kva problem eller ineffektivitet i denne prosessen som KI kan adressere.',
+    '2. ideas: List opp 3–5 konkrete idear for korleis KI eller automatisering kan brukast i denne prosessen.',
+    '',
+    'Returner KUN gyldig JSON i dette formatet, utan forklaring eller markdown:',
+    '{ "problem": "...", "ideas": "..." }',
+  ].join('\n')
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 1024,
+    messages: [{ role: 'user', content: promptText }],
+  })
+
+  const raw = response.content.find((b) => b.type === 'text')
+  if (!raw || raw.type !== 'text') {
+    return NextResponse.json({ error: 'Tomt svar frå AI' }, { status: 500 })
+  }
+
+  const jsonMatch = raw.text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    return NextResponse.json({ error: 'Kunne ikkje parse AI-svar' }, { status: 500 })
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as { problem: string; ideas: string }
+  if (typeof parsed.problem !== 'string' || typeof parsed.ideas !== 'string') {
+    return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
+  }
+
+  return NextResponse.json({ problem: parsed.problem, ideas: parsed.ideas })
 }
