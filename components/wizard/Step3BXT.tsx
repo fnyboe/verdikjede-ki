@@ -138,7 +138,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             {showLabels && (
-              <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
+              <text x={cx + 8} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
             )}
           </g>
         )
@@ -390,14 +390,6 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-2">
-        <h2 className="text-xl font-bold text-[#1E293B]">Vurder prosessar — subjektivt</h2>
-        <p className="text-sm text-slate-500">
-          Her er verdikjedestegene du tok med videre fra objektiv vurdering av KI-egnethet i Steg 2 (med score i parentes).
-        </p>
-      </div>
-
       {isLoadingFromDB ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -416,10 +408,11 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
-              <div>
-                <h3 className="text-base font-bold text-[#1E293B]">Vurder kvar prosess</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
-              </div>
+              <h3 className="text-base font-bold text-[#1E293B]">Vurder kvar prosess</h3>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm text-slate-500">Her er prosessane du tok med vidare frå den objektive vurderinga i steg 2 (score i parentes).</p>
+              <p className="text-sm text-slate-500">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
             </div>
 
             {/* vc_step tab navigation */}
