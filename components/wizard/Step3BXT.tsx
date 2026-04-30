@@ -138,7 +138,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             {showLabels && (
-              <text x={cx + 8} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
+              <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
             )}
           </g>
         )
@@ -412,41 +412,41 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
         </div>
       ) : (
         <>
-          {/* vc_step tab navigation */}
-          <div className="flex gap-2 flex-wrap">
-            {vcGroups.map(({ vs, tabScore }) => {
-              const active = vs.id === activeVcId
-              return (
-                <button
-                  key={vs.id}
-                  onClick={() => { setActiveVcId(vs.id); setOpenId(null) }}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
-                    active
-                      ? 'bg-[#1E293B] text-white border-[#1E293B]'
-                      : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {vs.name}{' '}
-                  <span className={`font-normal text-xs ${active ? 'opacity-70' : 'opacity-60'}`}>
-                    ({tabScore})
-                  </span>
-                </button>
-              )
-            })}
-          </div>
+          {/* Del A — Vurder kvar prosess */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
+              <div>
+                <h3 className="text-base font-bold text-[#1E293B]">Vurder kvar prosess</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
+              </div>
+            </div>
 
-          {/* Instruction paragraphs */}
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Vurder forretningsverdi, brukaropplevelse og teknisk gjennomførbarheit for kvar prosess. Alle score skal settast basert på felles forståing og er ein indikasjon på strategisk KI-eignetheit for prosessen, ikkje ein fasit.
-            </p>
-            <p className="text-sm text-slate-600 leading-relaxed">
-              Opne kvar prosess for å få KI-genererte forslag på problemstilling og idé for korleis KI kan brukast, samt score på forretningseffekt og gjennomførbarheit.
-            </p>
-          </div>
+            {/* vc_step tab navigation */}
+            <div className="flex gap-2 flex-wrap">
+              {vcGroups.map(({ vs, tabScore }) => {
+                const active = vs.id === activeVcId
+                return (
+                  <button
+                    key={vs.id}
+                    onClick={() => { setActiveVcId(vs.id); setOpenId(null) }}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                      active
+                        ? 'bg-[#1E293B] text-white border-[#1E293B]'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    {vs.name}{' '}
+                    <span className={`font-normal text-xs ${active ? 'opacity-70' : 'opacity-60'}`}>
+                      ({tabScore})
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
 
-          {/* Accordion list — scoped to active vc_step */}
-          <div className="flex flex-col gap-2">
+            {/* Accordion list — scoped to active vc_step */}
+            <div className="flex flex-col gap-2">
             {activeProcs.map(process => {
               const isOpen = openId === process.id
               const isAiLoading = aiLoading[process.id] ?? false
@@ -624,11 +624,19 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             })}
           </div>
 
-          {/* Scatter plot — filter buttons top-right, tooltip on hover */}
+          </div>
+
+          {/* Del B — KI-eignetheit */}
           {processes.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-6">
+            <div className="bg-white border border-slate-200 rounded-xl p-6 mt-8">
               <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
-                <h3 className="text-xl font-bold text-[#1E293B]">KI-eignetheit (indikasjon)</h3>
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">B</span>
+                  <div>
+                    <h3 className="text-base font-bold text-[#1E293B]">KI-eignetheit (indikasjon)</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Scatter plot viser alle prosessar fordelt etter forretningseffekt og gjennomførbarheit.</p>
+                  </div>
+                </div>
                 <div className="flex gap-1.5 flex-wrap justify-end">
                   <button
                     onClick={() => setPlotFilter(null)}
@@ -661,14 +669,15 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             </div>
           )}
 
-          {/* Summary grid — all processes from all vc_steps, grouped by vc_step */}
+          {/* Del C — Prosessar vidare */}
           {processes.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4">
-              <div>
-                <h3 className="text-xl font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Prosessar med snitt ≥ 4 anbefales vidare (markert med tykk ramme). Klikk for å ta med eller fjerne.
-                </p>
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4 mt-8">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">C</span>
+                <div>
+                  <h3 className="text-base font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Prosessar med KI-eignetheit ≥ 4 vert anbefalt vidare. Klikk for å endre.</p>
+                </div>
               </div>
               {vcSteps.map(vs => {
                 const vsProcs = processes.filter(p => p.vc_step_id === vs.id)
