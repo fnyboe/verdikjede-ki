@@ -47,6 +47,10 @@ function simpleAvg(scores: Record<string, number>) {
   return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 10) / 10
 }
 
+function trunc(s: string, max = 22) {
+  return s.length > max ? s.slice(0, max) + '…' : s
+}
+
 function getScoreColor(v: number) {
   const r = (v - 1) / 4
   if (r >= 0.66) return { dot: '#10B981', bg: '#D1FAE5', text: '#065F46' }
@@ -147,7 +151,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const allProcs: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: p.included || simpleAvg(p.scores) >= 4 })))
+        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: p.included ?? (simpleAvg(p.scores) >= 4) })))
       }
       setProcesses(allProcs)
       const initEntries: Record<string, BxtEntry> = {}
@@ -565,26 +569,32 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                       {vsProcs.map(p => {
                         const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
-                        const q = agg.total >= 4
-                        const col = getScoreColor(agg.total)
+                        const autoIncl = simpleAvg(p.scores) >= 4
+                        const state = p.included ? (autoIncl ? 'auto' : 'manual') : 'excluded'
+                        const boxStyle = {
+                          auto:     { bg: '#D1FAE5', border: '2px solid #10B981' },
+                          manual:   { bg: '#F0FDF4', border: '2px dashed #10B981' },
+                          excluded: { bg: '#F8FAFC', border: '2px solid #E2E8F0' },
+                        }[state]
+                        const badgeStyle = {
+                          auto:     { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
+                          manual:   { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
+                          excluded: { bg: '#E2E8F0', color: '#64748B', text: 'Ikkje inkludert' },
+                        }[state]
                         return (
                           <div
                             key={p.id}
                             onClick={() => handleToggleIncluded(p.id)}
                             className="cursor-pointer rounded-lg p-2 text-center transition-all"
-                            style={{
-                              background: p.included ? col.bg : '#F8FAFC',
-                              border: q
-                                ? `3px solid ${col.dot}`
-                                : p.included
-                                ? `2px solid ${col.dot}88`
-                                : '2px solid #E2E8F0',
-                              opacity: p.included ? 1 : 0.5,
-                            }}
+                            style={{ background: boxStyle.bg, border: boxStyle.border, opacity: p.included ? 1 : 0.6 }}
                           >
-                            <div className="text-[11px] font-bold break-words leading-snug" style={{ color: col.text }}>{p.name}</div>
-                            <div className="text-xs mt-1" style={{ color: col.text }}>
-                              {agg.total} – {p.included ? 'Inkludert' : 'Ikkje inkludert'}
+                            <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
+                            <div className="text-xs mt-1 text-slate-600">{agg.total}</div>
+                            <div
+                              className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                              style={{ background: badgeStyle.bg, color: badgeStyle.color }}
+                            >
+                              {badgeStyle.text}
                             </div>
                           </div>
                         )
