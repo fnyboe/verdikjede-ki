@@ -146,14 +146,14 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
 
       {/* Tooltip — only in Alle-mode */}
       {!showLabels && tooltip !== null && (() => {
-        const TW = 164, TH = 38, TP = 7
+        const TW = 220, TH = 38, TP = 7
         const ttx = Math.min(tooltip.cx + 10, W - TW - 4)
         const tty = Math.max(tooltip.cy - TH - 6, 4)
         return (
           <g style={{ pointerEvents: 'none' }}>
             <rect x={ttx} y={tty} width={TW} height={TH} rx={4} fill="white" stroke="#E2E8F0" strokeWidth={1} filter="url(#tt-shadow)" />
-            <text x={ttx + TP} y={tty + 14} fontSize={9} fontWeight="700" fill="#1E293B">{trunc(tooltip.name, 20)}</text>
-            <text x={ttx + TP} y={tty + 28} fontSize={8} fill="#64748B">{trunc(tooltip.vcName, 22)}</text>
+            <text x={ttx + TP} y={tty + 14} fontSize={9} fontWeight="700" fill="#1E293B">{tooltip.name}</text>
+            <text x={ttx + TP} y={tty + 28} fontSize={8} fill="#64748B">{tooltip.vcName}</text>
           </g>
         )
       })()}
