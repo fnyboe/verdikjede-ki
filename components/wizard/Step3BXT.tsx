@@ -101,23 +101,23 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
       <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={8} fill="#94A3B8">0</text>
 
       {/* Quadrant labels */}
-      <text x={tx(0) + 8} y={ty(5) + 16} fontSize={11} fontWeight="700" fill="#D97706">Utforsk videre</text>
-      <text x={tx(0) + 8} y={ty(5) + 28} fontSize={11} fontWeight="700" fill="#D97706">(seinare)</text>
-      <text x={tx(3) + 8} y={ty(5) + 16} fontSize={11} fontWeight="700" fill="#3B82F6">Utfør</text>
-      <text x={tx(3) + 8} y={ty(5) + 28} fontSize={11} fontWeight="700" fill="#3B82F6">oppgåveanalyse</text>
-      <text x={tx(0) + 8} y={ty(3) + 16} fontSize={11} fontWeight="700" fill="#EF4444">Sett på vent</text>
-      <text x={tx(3) + 8} y={ty(3) + 16} fontSize={11} fontWeight="700" fill="#10B981">Inkuber</text>
-      <text x={tx(3) + 8} y={ty(3) + 28} fontSize={11} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
+      <text x={tx(0) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#D97706">Utforsk videre</text>
+      <text x={tx(0) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#D97706">(seinare)</text>
+      <text x={tx(3) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#3B82F6">Utfør</text>
+      <text x={tx(3) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#3B82F6">oppgåveanalyse</text>
+      <text x={tx(0) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#EF4444">Sett på vent</text>
+      <text x={tx(3) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#10B981">Inkuber</text>
+      <text x={tx(3) + 8} y={ty(3) + 28} fontSize={10} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
 
       {/* Axis labels */}
-      <text x={tx(2.5)} y={ty(0) + 26} textAnchor="middle" fontSize={9} fontWeight="700" fill="#475569">
+      <text x={tx(2.5)} y={ty(0) + 26} textAnchor="middle" fontSize={10} fontWeight="700" fill="#475569">
         Grad av gjennomførbarheit
       </text>
       <text
         x={18}
         y={ty(2.5)}
         textAnchor="middle"
-        fontSize={9}
+        fontSize={10}
         fontWeight="700"
         fill="#475569"
         transform={`rotate(-90, 18, ${ty(2.5)})`}
@@ -138,7 +138,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             {showLabels && (
-              <text x={cx + 8} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
+              <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
             )}
           </g>
         )
