@@ -86,11 +86,11 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
       {/* Axis ticks — smaller font */}
       {[1, 2, 3, 4, 5].map(v => (
         <g key={v}>
-          <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={9} fill="#94A3B8">{v}</text>
-          <text x={PAD - 10} y={ty(v) + 4} textAnchor="end" fontSize={9} fill="#94A3B8">{v}</text>
+          <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={8} fill="#94A3B8">{v}</text>
+          <text x={PAD - 10} y={ty(v) + 4} textAnchor="end" fontSize={8} fill="#94A3B8">{v}</text>
         </g>
       ))}
-      <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={9} fill="#94A3B8">0</text>
+      <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={8} fill="#94A3B8">0</text>
 
       {/* Quadrant labels */}
       <text x={tx(0) + 8} y={ty(5) + 16} fontSize={11} fontWeight="700" fill="#D97706">Utforsk videre</text>
@@ -102,17 +102,17 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
       <text x={tx(3) + 8} y={ty(3) + 28} fontSize={11} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
 
       {/* Axis labels */}
-      <text x={tx(2.5)} y={H - 2} textAnchor="middle" fontSize={10} fontWeight="700" fill="#475569">
-        Grad av gjennomførbarhet
+      <text x={tx(2.5)} y={ty(0) + 26} textAnchor="middle" fontSize={9} fontWeight="700" fill="#475569">
+        Grad av gjennomførbarheit
       </text>
       <text
-        x={12}
+        x={18}
         y={ty(2.5)}
         textAnchor="middle"
-        fontSize={10}
+        fontSize={9}
         fontWeight="700"
         fill="#475569"
-        transform={`rotate(-90, 12, ${ty(2.5)})`}
+        transform={`rotate(-90, 18, ${ty(2.5)})`}
       >
         Grad av strategisk forretningseffekt
       </text>
@@ -123,8 +123,8 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
         const cy = ty(p.sA)
         return (
           <g key={p.id}>
-            <circle cx={cx} cy={cy} r={7} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
-            <text x={cx + 12} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
+            <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
+            <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
           </g>
         )
       })}
@@ -403,10 +403,10 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
           {/* Instruction paragraphs */}
           <div className="flex flex-col gap-2">
             <p className="text-sm text-slate-600 leading-relaxed">
-              Vurder forretningsverdi, brukeropplevelse og teknisk gjennomførbarhet for hvert prosessteg. Alle score skal settes basert på felles forståelse og er en indikasjon på strategisk KI-egnethet for prosessteg, ikke en fasit.
+              Vurder forretningsverdi, brukaropplevelse og teknisk gjennomførbarheit for kvar prosess. Alle score skal settast basert på felles forståing og er ein indikasjon på strategisk KI-eignetheit for prosessen, ikkje ein fasit.
             </p>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Prosessteg med snitt ≥ 4 anbefales videre — markert med tykk ramme i bunnen. Klikk for å ta med eller fjerne.
+              Opne kvar prosess for å få KI-genererte forslag på problemstilling og idé for korleis KI kan brukast, samt score på forretningseffekt og gjennomførbarheit.
             </p>
           </div>
 
@@ -494,7 +494,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                 : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                           >
-                            {t === 'problem' ? 'Tekstanalyse' : 'Analyser KI-eignetheit av prosess'}
+                            {t === 'problem' ? 'Tekstanalyse' : 'Vurder KI-eignetheit'}
                           </button>
                         ))}
                       </div>
