@@ -147,7 +147,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const allProcs: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
+        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: p.included || simpleAvg(p.scores) >= 4 })))
       }
       setProcesses(allProcs)
       const initEntries: Record<string, BxtEntry> = {}
@@ -545,52 +545,54 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             </div>
           )}
 
-          {/* Summary grid — all processes from all vc_steps, grouped by vc_step order */}
+          {/* Summary grid — all processes from all vc_steps, grouped by vc_step */}
           {processes.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4">
               <div>
-                <h3 className="text-sm font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
+                <h3 className="text-xl font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Prosessar med snitt ≥ 4 anbefales vidare (markert med tykk ramme). Klikk for å ta med eller fjerne.
                 </p>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-                {vcSteps.flatMap(vs =>
-                  processes
-                    .filter(p => p.vc_step_id === vs.id)
-                    .map(p => {
-                      const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
-                      const q = agg.total >= 4
-                      const col = getScoreColor(agg.total)
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => handleToggleIncluded(p.id)}
-                          className="cursor-pointer rounded-lg p-2 text-center transition-all flex flex-col items-center gap-0.5"
-                          style={{
-                            background: p.included ? col.bg : '#F8FAFC',
-                            border: q
-                              ? `3px solid ${col.dot}`
-                              : p.included
-                              ? `2px solid ${col.dot}88`
-                              : '2px solid #E2E8F0',
-                            opacity: p.included ? 1 : 0.5,
-                          }}
-                        >
-                          <div className="text-[10px] text-slate-400 leading-tight w-full truncate">{vs.name}</div>
-                          <div className="text-[11px] font-bold break-words leading-snug w-full" style={{ color: col.text }}>{p.name}</div>
-                          <div className="text-xl font-bold" style={{ color: col.text }}>{agg.total}</div>
+              {vcSteps.map(vs => {
+                const vsProcs = processes.filter(p => p.vc_step_id === vs.id)
+                if (!vsProcs.length) return null
+                return (
+                  <div key={vs.id} className="flex flex-col gap-2">
+                    <div className="text-center text-sm font-bold text-[#1E293B] py-1 border-b border-slate-200">
+                      {vs.name}
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                      {vsProcs.map(p => {
+                        const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
+                        const q = agg.total >= 4
+                        const col = getScoreColor(agg.total)
+                        return (
                           <div
-                            className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold"
-                            style={{ background: p.included ? '#D1FAE5' : '#E2E8F0', color: p.included ? '#065F46' : '#64748B' }}
+                            key={p.id}
+                            onClick={() => handleToggleIncluded(p.id)}
+                            className="cursor-pointer rounded-lg p-2 text-center transition-all"
+                            style={{
+                              background: p.included ? col.bg : '#F8FAFC',
+                              border: q
+                                ? `3px solid ${col.dot}`
+                                : p.included
+                                ? `2px solid ${col.dot}88`
+                                : '2px solid #E2E8F0',
+                              opacity: p.included ? 1 : 0.5,
+                            }}
                           >
-                            {p.included ? '✓ Inkludert' : 'Ikkje inkludert'}
+                            <div className="text-[11px] font-bold break-words leading-snug" style={{ color: col.text }}>{p.name}</div>
+                            <div className="text-xs mt-1" style={{ color: col.text }}>
+                              {agg.total} – {p.included ? 'Inkludert' : 'Ikkje inkludert'}
+                            </div>
                           </div>
-                        </div>
-                      )
-                    })
-                )}
-              </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
