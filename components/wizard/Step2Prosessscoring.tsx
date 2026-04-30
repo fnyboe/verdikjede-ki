@@ -42,16 +42,6 @@ function autoIncluded(scores: Record<string, number>, weights: Record<string, nu
   return calcWeightedAvg(scores, weights, allDims) >= 4 && (scores['data'] ?? 3) >= 3
 }
 
-function stepTrafficLight(vsRows: ProcessRow[], weights: Record<string, number>, allDims: Dim[]): 'green' | 'yellow' | 'red' {
-  const filled = vsRows.filter((r) => r.name.trim())
-  if (filled.length === 0) return 'yellow'
-  const avg = filled.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filled.length
-  const dataAvg = filled.reduce((s, r) => s + (r.scores['data'] ?? 3), 0) / filled.length
-  if (avg >= 4 && dataAvg >= 3) return 'green'
-  if (avg >= 3) return 'yellow'
-  return 'red'
-}
-
 function dotColor(light: 'green' | 'yellow' | 'red'): string {
   if (light === 'green') return 'bg-emerald-500'
   if (light === 'yellow') return 'bg-amber-400'
@@ -70,6 +60,24 @@ function toRows(processes: Process[], weights: Record<string, number>, allDims: 
       ai_suggestion: p.ai_suggestion ?? null,
     }
   })
+}
+
+function DimTooltip({ label, tip }: { label: string; tip: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      className="relative cursor-help"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {label}
+      {show && tip && (
+        <span className="absolute bottom-full left-0 mb-1 w-44 bg-[#1E293B] text-white text-xs rounded-lg px-2 py-1.5 z-50 pointer-events-none whitespace-normal leading-relaxed">
+          {tip}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export function Step2Prosessscoring({
@@ -215,13 +223,10 @@ export function Step2Prosessscoring({
     }))
   }
 
-  function toggleStepIncluded(vsId: string) {
-    const vsRows = rows[vsId] ?? []
-    const filled = vsRows.filter((r) => r.name.trim())
-    const allIncluded = filled.length > 0 && filled.every((r) => r.included)
+  function toggleProcessIncluded(vsId: string, i: number) {
     setRows((prev) => ({
       ...prev,
-      [vsId]: prev[vsId].map((r) => ({ ...r, included: !allIncluded })),
+      [vsId]: prev[vsId].map((r, idx) => idx === i ? { ...r, included: !r.included } : r),
     }))
   }
 
@@ -294,16 +299,156 @@ export function Step2Prosessscoring({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Vekting av variablar */}
+
+      {/* Section A: Definer prosessar */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 pb-0 flex flex-col gap-4">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
+            <div>
+              <h3 className="text-base font-bold text-[#1E293B]">Definer prosessar</h3>
+              <p className="text-sm text-slate-500">Legg til prosessane for kvart verdikjedesteg og gi dei score. KI-forslag kjem automatisk når du vel eit steg.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-slate-200 mt-4 overflow-x-auto">
+          {vcSteps.map((vs) => {
+            const vsRows = rows[vs.id] ?? []
+            const filledRows = vsRows.filter((r) => r.name.trim())
+            const avgAll = filledRows.length > 0
+              ? filledRows.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filledRows.length
+              : null
+            const isActive = vs.id === activeTab
+            const light = avgAll !== null
+              ? avgAll >= 4 ? 'green' : avgAll >= 3 ? 'yellow' : 'red'
+              : null
+
+            return (
+              <button
+                key={vs.id}
+                onClick={() => handleSelectTab(vs.id, vs.name)}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                  isActive
+                    ? 'border-[#10B981] text-[#10B981]'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {light && (
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor(light as 'green' | 'yellow' | 'red')}`} />
+                )}
+                {vs.name}
+                {avgAll !== null && (
+                  <span className="text-xs text-slate-400 font-normal">{formatAvg(avgAll)}</span>
+                )}
+                {aiLoading[vs.id] && (
+                  <span className="text-xs text-slate-400 animate-pulse">...</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Active tab content */}
+        <div className="p-6 flex flex-col gap-4">
+          {isLoadingFromDB ? (
+            <div className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              <p className="text-sm font-medium text-[#10B981]">Lastar prosessar...</p>
+            </div>
+          ) : (
+            <>
+              {activeRows.length === 0 && !aiLoading[activeTab] && (
+                <p className="text-sm text-slate-400 italic">Ingen prosessar enno. Legg til manuelt.</p>
+              )}
+              {aiLoading[activeTab] && (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <p className="text-sm font-medium text-[#10B981]">Genererer prosessforslag...</p>
+                </div>
+              )}
+
+              {activeRows.map((row, i) => (
+                <div key={i} className="border border-blue-100 bg-blue-50 rounded-lg p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateName(activeTab, i, e.target.value)}
+                      placeholder="Prosessnamn"
+                      className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                    />
+                    <button
+                      onClick={() => removeRow(activeTab, i)}
+                      className="text-slate-400 hover:text-red-500 transition-colors px-1"
+                      title="Fjern prosess"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {allDims.map((d) => (
+                      <div key={d.key} className="flex flex-col gap-1">
+                        <label className="text-xs text-slate-500">
+                          <DimTooltip label={d.label} tip={d.tip} />
+                        </label>
+                        <select
+                          value={row.scores[d.key] ?? 3}
+                          onChange={(e) => updateScore(activeTab, i, d.key, parseInt(e.target.value))}
+                          className="border border-slate-300 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                        >
+                          {[1, 2, 3, 4, 5].map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-slate-500 text-right">
+                    Vekta snitt:{' '}
+                    <span className="font-semibold text-[#1E293B]">
+                      {formatAvg(calcWeightedAvg(row.scores, weights, allDims))}
+                    </span>
+                  </p>
+                </div>
+              ))}
+
+              <button
+                onClick={() => addRow(activeTab)}
+                className="self-start text-sm text-[#3B82F6] hover:underline"
+              >
+                + Legg til prosess
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Section B: Vekting av variablar */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Vekting av variablar</h2>
-          <p className="text-sm text-slate-500">Fordel 100 poeng mellom variablane.</p>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">B</span>
+          <div>
+            <h3 className="text-base font-bold text-[#1E293B]">Vekting av variablar</h3>
+            <p className="text-sm text-slate-500">Fordel 100 poeng mellom variablane. Hald over variabelnamnet for forklaring.</p>
+          </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {allDims.map((d) => (
             <div key={d.key} className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-slate-600" title={d.tip}>{d.label}</label>
+              <label className="text-xs font-medium text-slate-600">
+                <DimTooltip label={d.label} tip={d.tip} />
+              </label>
               <input
                 type="number"
                 min={0}
@@ -366,208 +511,76 @@ export function Step2Prosessscoring({
         )}
       </div>
 
-      {/* Tab-navigasjon + scoringspanel */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-6 pb-0 flex flex-col gap-2">
-          <h2 className="text-base font-semibold text-[#1E293B]">Prosessar per verdikjedesteg</h2>
-          <p className="text-sm text-slate-500">Velg eit verdikjedesteg, legg inn prosessar og gi score (1–5) på kvar variabel.</p>
-          <p className="text-sm text-slate-500">Dei som tilrådast å ta med vidare har KI-eignetheit over 4 i snitt og 3 eller meir på datatilgjengelegheit. Desse er markerte nedst. For å ta med andre prosessar, klikk på dei i oppsummeringa nedst.</p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-slate-200 mt-4 overflow-x-auto">
-          {vcSteps.map((vs) => {
-            const vsRows = rows[vs.id] ?? []
-            const filledRows = vsRows.filter((r) => r.name.trim())
-            const avgAll = filledRows.length > 0
-              ? filledRows.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filledRows.length
-              : null
-            const isActive = vs.id === activeTab
-            const light = avgAll !== null
-              ? avgAll >= 4 ? 'green' : avgAll >= 3 ? 'yellow' : 'red'
-              : null
-
-            return (
-              <button
-                key={vs.id}
-                onClick={() => handleSelectTab(vs.id, vs.name)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  isActive
-                    ? 'border-[#10B981] text-[#10B981]'
-                    : 'border-transparent text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {light && (
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor(light as 'green' | 'yellow' | 'red')}`} />
-                )}
-                {vs.name}
-                {avgAll !== null && (
-                  <span className="text-xs text-slate-400 font-normal">{formatAvg(avgAll)}</span>
-                )}
-                {aiLoading[vs.id] && (
-                  <span className="text-xs text-slate-400 animate-pulse">...</span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Aktivt tab-innhald */}
-        <div className="p-6 flex flex-col gap-4">
-          {isLoadingFromDB ? (
-            <div className="flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <p className="text-sm font-medium text-[#10B981]">Lastar prosessar...</p>
-            </div>
-          ) : (
-            <>
-          {activeRows.length === 0 && !aiLoading[activeTab] && (
-            <p className="text-sm text-slate-400 italic">Ingen prosessar enno. Legg til manuelt.</p>
-          )}
-          {aiLoading[activeTab] && (
-            <div className="flex items-center gap-2">
-              <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <p className="text-sm font-medium text-[#10B981]">Genererer prosessforslag...</p>
-            </div>
-          )}
-
-          {activeRows.map((row, i) => (
-            <div key={i} className="border border-blue-100 bg-blue-50 rounded-lg p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400 w-5 shrink-0">{i + 1}</span>
-                <input
-                  type="text"
-                  value={row.name}
-                  onChange={(e) => updateName(activeTab, i, e.target.value)}
-                  placeholder="Prosessnamn"
-                  className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-                />
-                <button
-                  onClick={() => removeRow(activeTab, i)}
-                  className="text-slate-400 hover:text-red-500 transition-colors px-1"
-                  title="Fjern prosess"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-                {allDims.map((d) => (
-                  <div key={d.key} className="flex flex-col gap-1">
-                    <label className="text-xs text-slate-500 cursor-help" title={d.tip}>
-                      {d.label}
-                    </label>
-                    <select
-                      value={row.scores[d.key] ?? 3}
-                      onChange={(e) => updateScore(activeTab, i, d.key, parseInt(e.target.value))}
-                      className="border border-slate-300 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
-                    >
-                      {[1, 2, 3, 4, 5].map((v) => (
-                        <option key={v} value={v}>{v}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-xs text-slate-500 text-right">
-                Vekta snitt:{' '}
-                <span className="font-semibold text-[#1E293B]">
-                  {formatAvg(calcWeightedAvg(row.scores, weights, allDims))}
-                </span>
-              </p>
-            </div>
-          ))}
-
-          <button
-            onClick={() => addRow(activeTab)}
-            className="self-start text-sm text-[#3B82F6] hover:underline"
-          >
-            + Legg til prosess
-          </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Tilrådingsoversikt */}
+      {/* Section C: Tilrådingsoversikt */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Tilrådingsoversikt</h2>
-          <p className="text-sm text-slate-500">Klikk eit kort for å toggle om heile verdikjedesteget skal takast med vidare.</p>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">C</span>
+          <div>
+            <h3 className="text-base font-bold text-[#1E293B]">Tilrådingsoversikt</h3>
+            <p className="text-sm text-slate-500">Prosessar med snitt ≥ 4 og data ≥ 3 vert anbefalt vidare. Klikk for å endre inkludering.</p>
+          </div>
         </div>
 
-        <div className="flex gap-4 flex-wrap">
+        <div className="flex flex-col gap-5">
           {vcSteps.map((vs) => {
             const vsRows = rows[vs.id] ?? []
-            const filled = vsRows.filter((r) => r.name.trim())
-            const light = stepTrafficLight(vsRows, weights, allDims)
-            const avg = filled.length > 0
-              ? filled.reduce((s, r) => s + calcWeightedAvg(r.scores, weights, allDims), 0) / filled.length
-              : null
-            const allIncluded = filled.length > 0 && filled.every((r) => r.included)
-
-            const cardClass = light === 'green'
-              ? allIncluded
-                ? 'border-emerald-400 bg-emerald-50'
-                : 'border-emerald-200 bg-emerald-50 opacity-50'
-              : light === 'yellow'
-              ? allIncluded
-                ? 'border-amber-300 bg-amber-50'
-                : 'border-amber-100 bg-amber-50 opacity-50'
-              : allIncluded
-              ? 'border-red-300 bg-red-50'
-              : 'border-red-100 bg-red-50 opacity-50'
-
-            const labelClass = light === 'green'
-              ? 'text-emerald-800'
-              : light === 'yellow'
-              ? 'text-amber-800'
-              : 'text-red-800'
+            const hasRows = vsRows.some((r) => r.name.trim())
+            if (!hasRows) return null
 
             return (
-              <button
-                key={vs.id}
-                onClick={() => toggleStepIncluded(vs.id)}
-                className={`flex-1 min-w-[160px] text-left rounded-xl border-2 p-4 flex flex-col gap-2 transition-all hover:shadow-sm ${cardClass}`}
-                title="Klikk for å toggle inkludering"
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotColor(light)}`} />
-                  <span className={`text-sm font-semibold ${labelClass}`}>{vs.name}</span>
-                </div>
-                {avg !== null && (
-                  <p className={`text-xs ${labelClass}`}>
-                    Snitt: <span className="font-bold">{formatAvg(avg)}</span>
-                  </p>
-                )}
-                <p className="text-xs text-slate-500">{filled.length} prosess{filled.length !== 1 ? 'ar' : ''}</p>
-                <p className={`text-xs font-medium mt-1 ${allIncluded ? 'text-slate-700' : 'text-slate-400'}`}>
-                  {allIncluded ? '✓ Inkludert' : '✕ Ikkje inkludert'}
-                </p>
-              </button>
+              <div key={vs.id} className="flex flex-col gap-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{vs.name}</p>
+                {vsRows.map((row, i) => {
+                  if (!row.name.trim()) return null
+                  const avg = calcWeightedAvg(row.scores, weights, allDims)
+                  const isAuto = row.ai_suggestion === 'steg2'
+
+                  let borderClass: string
+                  let bgClass: string
+                  let textClass: string
+                  if (row.included) {
+                    borderClass = isAuto ? 'border-emerald-400' : 'border-emerald-400 border-dashed'
+                    bgClass = 'bg-emerald-50'
+                    textClass = 'text-emerald-800'
+                  } else {
+                    borderClass = 'border-slate-300 border-dashed'
+                    bgClass = 'bg-slate-50'
+                    textClass = 'text-slate-500'
+                  }
+
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => toggleProcessIncluded(vs.id, i)}
+                      className={`text-left rounded-xl border-2 ${borderClass} ${bgClass} px-4 py-3 flex items-center justify-between transition-all hover:shadow-sm`}
+                    >
+                      <div>
+                        <p className={`text-sm font-semibold ${textClass}`}>{row.name}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">Snitt: {formatAvg(avg)}</p>
+                      </div>
+                      <span className={`text-xs font-medium ${row.included ? 'text-emerald-600' : 'text-slate-400'}`}>
+                        {row.included ? '✓ Inkludert' : '✕ Ikkje inkludert'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             )
           })}
         </div>
 
         <div className="flex gap-4 text-xs text-slate-500 mt-1 flex-wrap">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
-            Tilrådd (snitt ≥ 4 og data ≥ 3)
+            <span className="w-3 h-3 rounded border-2 border-emerald-400 bg-emerald-50 inline-block" />
+            Automatisk tilrådd
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-            Middels (snitt 3–4)
+            <span className="w-3 h-3 rounded border-2 border-dashed border-emerald-400 bg-emerald-50 inline-block" />
+            Manuelt inkludert
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" />
-            Låg prioritet (snitt &lt; 3)
+            <span className="w-3 h-3 rounded border-2 border-dashed border-slate-300 bg-slate-50 inline-block" />
+            Ikkje inkludert
           </span>
         </div>
       </div>
