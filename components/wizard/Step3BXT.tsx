@@ -138,7 +138,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             {showLabels && (
-              <text x={cx + 8} y={cy + 4} fontSize={6} fontWeight="600" fill="#1E293B">{p.name}</text>
+              <text x={cx + 8} y={cy + 4} fontSize={6} fill="#1E293B">{p.name}</text>
             )}
           </g>
         )
@@ -627,7 +627,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                   <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">B</span>
                   <div>
                     <h3 className="text-base font-bold text-[#1E293B]">KI-eignetheit (indikasjon)</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Scatter plot viser alle prosessar fordelt etter forretningseffekt og gjennomførbarheit.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Diagrammet nedanfor viser alle prosessar fordelt etter forretningseffekt og gjennomførbarheit.</p>
                   </div>
                 </div>
                 <div className="flex gap-1.5 flex-wrap justify-end">
