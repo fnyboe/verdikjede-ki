@@ -547,17 +547,14 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
           {/* Summary grid — scoped to active vc_step */}
           {activeProcs.length > 0 && (
-            <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3">
               <div>
-                <h3 className="text-base font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
-                <p className="text-sm text-slate-500 mt-1">
+                <h3 className="text-sm font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Prosessar med snitt ≥ 4 anbefales vidare (markert med tykk ramme). Klikk for å ta med eller fjerne.
                 </p>
               </div>
-              <div
-                className="grid gap-3"
-                style={{ gridTemplateColumns: `repeat(${Math.min(activeProcs.length, 4)}, 1fr)` }}
-              >
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                 {activeProcs.map(p => {
                   const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
                   const q = agg.total >= 4
@@ -566,30 +563,25 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                     <div
                       key={p.id}
                       onClick={() => handleToggleIncluded(p.id)}
-                      className="cursor-pointer rounded-xl p-3 text-center transition-all flex flex-col items-center gap-0.5"
+                      className="cursor-pointer rounded-lg p-2 text-center transition-all flex flex-col items-center gap-0.5"
                       style={{
                         background: p.included ? col.bg : '#F8FAFC',
                         border: q
-                          ? `4px solid ${col.dot}`
+                          ? `3px solid ${col.dot}`
                           : p.included
                           ? `2px solid ${col.dot}88`
                           : '2px solid #E2E8F0',
                         opacity: p.included ? 1 : 0.5,
                       }}
                     >
-                      <span
-                        className="inline-block w-3 h-3 rounded-full mb-1"
-                        style={{ backgroundColor: p.included ? col.dot : '#CBD5E1' }}
-                      />
-                      <div className="text-xs text-slate-400 leading-tight">{vcStepNames[p.vc_step_id ?? ''] ?? ''}</div>
-                      <div className="text-xs font-bold break-words leading-snug" style={{ color: col.text }}>{p.name}</div>
-                      <div className="text-2xl font-bold mt-1" style={{ color: col.text }}>{agg.total}</div>
-                      <div className="text-xs opacity-70">S:{agg.sA} G:{agg.fA}</div>
+                      <div className="text-[10px] text-slate-400 leading-tight w-full truncate">{vcStepNames[p.vc_step_id ?? ''] ?? ''}</div>
+                      <div className="text-[11px] font-bold break-words leading-snug w-full" style={{ color: col.text }}>{p.name}</div>
+                      <div className="text-xl font-bold" style={{ color: col.text }}>{agg.total}</div>
                       <div
-                        className="mt-2 inline-block px-2 py-0.5 rounded text-xs font-bold"
+                        className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold"
                         style={{ background: p.included ? '#D1FAE5' : '#E2E8F0', color: p.included ? '#065F46' : '#64748B' }}
                       >
-                        {p.included ? '✓ Inkludert' : 'Ikkje inkludert'}
+                        {p.included ? '✓' : '✕'}
                       </div>
                     </div>
                   )
