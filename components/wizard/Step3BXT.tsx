@@ -28,6 +28,7 @@ interface Props {
 
 const S_KEYS = ['alignment', 'biz_strategy', 'biz_value', 'biz_timeline']
 const F_KEYS = ['exp_personas', 'exp_value', 'exp_resistance', 'tech_risk', 'tech_security', 'tech_fit']
+const PLOT_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 function bxtAgg(bxt: Record<string, number | string>) {
   const sA = S_KEYS.reduce((a, k) => a + Number(bxt[k] ?? 3), 0) / S_KEYS.length
@@ -53,7 +54,7 @@ function getScoreColor(v: number) {
   return { dot: '#EF4444', bg: '#FEE2E2', text: '#991B1B' }
 }
 
-type PlotProcess = Process & { sA: number; fA: number; total: number }
+type PlotProcess = Process & { sA: number; fA: number; total: number; vcColor: string }
 
 function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
   const W = 560
@@ -78,14 +79,14 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
       <line x1={tx(3)} y1={ty(5)} x2={tx(3)} y2={ty(0)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
       <line x1={tx(0)} y1={ty(3)} x2={tx(5)} y2={ty(3)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
 
-      {/* Axis ticks */}
+      {/* Axis ticks — smaller font */}
       {[1, 2, 3, 4, 5].map(v => (
         <g key={v}>
-          <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={11} fill="#94A3B8">{v}</text>
-          <text x={PAD - 10} y={ty(v) + 4} textAnchor="end" fontSize={11} fill="#94A3B8">{v}</text>
+          <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={9} fill="#94A3B8">{v}</text>
+          <text x={PAD - 10} y={ty(v) + 4} textAnchor="end" fontSize={9} fill="#94A3B8">{v}</text>
         </g>
       ))}
-      <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={11} fill="#94A3B8">0</text>
+      <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={9} fill="#94A3B8">0</text>
 
       {/* Quadrant labels */}
       <text x={tx(0) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#D97706">Utforsk videre</text>
@@ -112,13 +113,13 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
         Grad av strategisk forretningseffekt
       </text>
 
-      {/* Process dots + name labels */}
+      {/* Process dots + name labels — colour by vc_step */}
       {processes.map(p => {
         const cx = tx(p.fA)
         const cy = ty(p.sA)
         return (
           <g key={p.id}>
-            <circle cx={cx} cy={cy} r={7} fill="#1E293B" stroke="#fff" strokeWidth={2} />
+            <circle cx={cx} cy={cy} r={7} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             <text x={cx + 12} y={cy + 4} fontSize={10} fontWeight="600" fill="#1E293B">{p.name}</text>
           </g>
         )
@@ -138,6 +139,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const [entries, setEntries] = useState<Record<string, BxtEntry>>({})
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
+  const [problemChanged, setProblemChanged] = useState<Record<string, boolean>>({})
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
 
@@ -167,33 +169,35 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // vc_steps that have at least one included process, with their tab score
+  // vc_steps that have at least one included process, with tab score and plot colour
   const vcGroups = vcSteps
-    .map(vs => {
+    .map((vs, idx) => {
       const procs = processes.filter(p => p.vc_step_id === vs.id && p.included)
       if (!procs.length) return null
       const tabScore = Math.round(
         procs.reduce((s, p) => s + simpleAvg(p.scores), 0) / procs.length * 10
       ) / 10
-      return { vs, procs, tabScore }
+      return { vs, procs, tabScore, color: PLOT_COLORS[idx % PLOT_COLORS.length] }
     })
-    .filter((g): g is { vs: VcStep; procs: Process[]; tabScore: number } => g !== null)
+    .filter((g): g is { vs: VcStep; procs: Process[]; tabScore: number; color: string } => g !== null)
+
+  const vcColorMap: Record<string, string> = Object.fromEntries(
+    vcGroups.map(({ vs, color }) => [vs.id, color])
+  )
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
 
-  const plotProcesses: PlotProcess[] = activeProcs.map(p => ({
+  // Scatter plot covers ALL included processes across all vc_steps, coloured by vc_step
+  const plotProcesses: PlotProcess[] = processes.map(p => ({
     ...p,
     ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
+    vcColor: vcColorMap[p.vc_step_id ?? ''] ?? '#1E293B',
   }))
 
-  async function handleOpen(process: Process) {
-    if (openId === process.id) { setOpenId(null); return }
-    setOpenId(process.id)
-    setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
+  const legendItems = vcGroups.map(({ vs, color }) => ({ name: vs.name, color }))
 
-    const entry = entries[process.id]
-    if (entry?.problem_desc || entry?.usecase_desc || process.ai_suggestion) return
-
+  // Shared AI call used by both auto-open and manual regenerate
+  async function runAIForProcess(process: Process) {
     const vsName = vcStepNames[process.vc_step_id ?? ''] ?? ''
     setAiLoading(prev => ({ ...prev, [process.id]: true }))
     try {
@@ -222,6 +226,22 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     } finally {
       setAiLoading(prev => ({ ...prev, [process.id]: false }))
     }
+  }
+
+  async function handleOpen(process: Process) {
+    if (openId === process.id) { setOpenId(null); return }
+    setOpenId(process.id)
+    setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
+
+    const entry = entries[process.id]
+    if (entry?.problem_desc || entry?.usecase_desc || process.ai_suggestion) return
+
+    await runAIForProcess(process)
+  }
+
+  async function handleRegenerateAI(process: Process) {
+    setProblemChanged(prev => ({ ...prev, [process.id]: false }))
+    await runAIForProcess(process)
   }
 
   async function handleSave(processId: string) {
@@ -258,13 +278,17 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   function setTextField(processId: string, field: keyof Omit<BxtEntry, 'bxt_scores'>, value: string) {
     setEntries(prev => ({ ...prev, [processId]: { ...prev[processId], [field]: value } }))
+    if (field === 'problem_desc') {
+      const hasAi = processes.some(p => p.id === processId && p.ai_suggestion)
+      if (hasAi) setProblemChanged(prev => ({ ...prev, [processId]: true }))
+    }
   }
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-2">
-        <h2 className="text-xl font-bold text-[#1E293B]">Vurder prosessteg — subjektivt</h2>
+        <h2 className="text-xl font-bold text-[#1E293B]">Vurder prosessar — subjektivt</h2>
         <p className="text-sm text-slate-500">
           Her er verdikjedestegene du tok med videre fra objektiv vurdering av KI-egnethet i Steg 2 (med score i parentes).
         </p>
@@ -323,6 +347,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
               const isOpen = openId === process.id
               const isAiLoading = aiLoading[process.id] ?? false
               const isSaving = saving[process.id] ?? false
+              const showRegenerate = problemChanged[process.id] ?? false
               const entry = entries[process.id] ?? {
                 problem_desc: '', usecase_desc: '', business_goal: '', key_results: '', responsible: '', bxt_scores: {},
               }
@@ -394,7 +419,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                 : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                           >
-                            {t === 'problem' ? 'Tekstanalyse' : 'BXT-scoring'}
+                            {t === 'problem' ? 'Tekstanalyse' : 'Analyser KI-eignetheit av prosess'}
                           </button>
                         ))}
                       </div>
@@ -429,6 +454,15 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                 </>
                               ))}
                             </div>
+                            {showRegenerate && (
+                              <Button
+                                onClick={() => handleRegenerateAI(process)}
+                                disabled={isAiLoading}
+                                className="self-start bg-[#1E293B] hover:bg-slate-700 text-white disabled:opacity-50"
+                              >
+                                {isAiLoading ? 'Genererer...' : 'Regenerer KI-forslag'}
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex flex-col gap-5">
@@ -487,12 +521,27 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             })}
           </div>
 
-          {/* Scatter plot — scoped to active vc_step */}
-          {activeProcs.length > 0 && (
+          {/* Scatter plot — all included processes, coloured by vc_step */}
+          {processes.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-xl p-6">
-              <h3 className="text-base font-bold text-[#1E293B] mb-4">KI-egnethet (indikasjon)</h3>
-              <div className="overflow-x-auto">
-                <ScatterPlot processes={plotProcesses} />
+              <h3 className="text-xl font-bold text-[#1E293B] mb-4">KI-egnethet (indikasjon)</h3>
+              <div className="flex gap-6 items-start">
+                <div className="flex-1 overflow-x-auto min-w-0">
+                  <ScatterPlot processes={plotProcesses} />
+                </div>
+                {legendItems.length > 0 && (
+                  <div className="flex flex-col gap-2 shrink-0 w-44 pt-6">
+                    {legendItems.map(item => (
+                      <div key={item.name} className="flex items-center gap-2">
+                        <span
+                          className="inline-block w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-xs text-slate-600 font-medium leading-tight">{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
