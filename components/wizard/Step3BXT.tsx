@@ -60,7 +60,7 @@ function getScoreColor(v: number) {
 
 type PlotProcess = Process & { sA: number; fA: number; total: number; vcColor: string; vcName: string }
 
-function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
+function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; showLabels: boolean }) {
   const W = 560
   const H = 440
   const PAD = 56
@@ -125,24 +125,27 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
         Grad av strategisk forretningseffekt
       </text>
 
-      {/* Process dots — colour by vc_step, tooltip on hover */}
+      {/* Process dots — labels when filtered, tooltip when Alle */}
       {processes.map(p => {
         const cx = tx(p.fA)
         const cy = ty(p.sA)
         return (
           <g
             key={p.id}
-            onMouseOver={() => setTooltip({ name: p.name, vcName: p.vcName, cx, cy })}
-            onMouseOut={() => setTooltip(null)}
-            style={{ cursor: 'pointer' }}
+            onMouseOver={showLabels ? undefined : () => setTooltip({ name: p.name, vcName: p.vcName, cx, cy })}
+            onMouseOut={showLabels ? undefined : () => setTooltip(null)}
+            style={{ cursor: showLabels ? 'default' : 'pointer' }}
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
+            {showLabels && (
+              <text x={cx + 8} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
+            )}
           </g>
         )
       })}
 
-      {/* Tooltip */}
-      {tooltip !== null && (() => {
+      {/* Tooltip — only in Alle-mode */}
+      {!showLabels && tooltip !== null && (() => {
         const TW = 164, TH = 38, TP = 7
         const ttx = Math.min(tooltip.cx + 10, W - TW - 4)
         const tty = Math.max(tooltip.cy - TH - 6, 4)
@@ -654,7 +657,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                   ))}
                 </div>
               </div>
-              <ScatterPlot processes={filteredPlotProcesses} />
+              <ScatterPlot processes={filteredPlotProcesses} showLabels={plotFilter !== null} />
             </div>
           )}
 
