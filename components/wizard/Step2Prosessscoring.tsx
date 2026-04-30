@@ -62,6 +62,10 @@ function toRows(processes: Process[], weights: Record<string, number>, allDims: 
   })
 }
 
+function trunc(s: string, max = 22) {
+  return s.length > max ? s.slice(0, max) + '…' : s
+}
+
 function DimTooltip({ label, tip }: { label: string; tip: string }) {
   const [show, setShow] = useState(false)
   return (
@@ -71,9 +75,18 @@ function DimTooltip({ label, tip }: { label: string; tip: string }) {
       onMouseLeave={() => setShow(false)}
     >
       {label}
-      {show && tip && (
-        <span className="absolute bottom-full left-0 mb-1 w-44 bg-[#1E293B] text-white text-xs rounded-lg px-2 py-1.5 z-50 pointer-events-none whitespace-normal leading-relaxed">
-          {tip}
+      {show && (
+        <span
+          className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none"
+          style={{ width: '280px' }}
+        >
+          <span className="block bg-white rounded-lg p-3 text-left border border-slate-200 shadow-md">
+            <span className="block text-xs font-bold text-[#1E293B] mb-2">Variablar:</span>
+            <span className="block text-xs font-semibold text-slate-700 mb-0.5">{label}</span>
+            {tip && (
+              <span className="block text-xs text-slate-500 leading-relaxed">{tip}</span>
+            )}
+          </span>
         </span>
       )}
     </span>
@@ -521,7 +534,7 @@ export function Step2Prosessscoring({
           </div>
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {vcSteps.map((vs) => {
             const vsRows = rows[vs.id] ?? []
             const hasRows = vsRows.some((r) => r.name.trim())
@@ -529,59 +542,47 @@ export function Step2Prosessscoring({
 
             return (
               <div key={vs.id} className="flex flex-col gap-2">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{vs.name}</p>
-                {vsRows.map((row, i) => {
-                  if (!row.name.trim()) return null
-                  const avg = calcWeightedAvg(row.scores, weights, allDims)
-                  const isAuto = row.ai_suggestion === 'steg2'
-
-                  let borderClass: string
-                  let bgClass: string
-                  let textClass: string
-                  if (row.included) {
-                    borderClass = isAuto ? 'border-emerald-400' : 'border-emerald-400 border-dashed'
-                    bgClass = 'bg-emerald-50'
-                    textClass = 'text-emerald-800'
-                  } else {
-                    borderClass = 'border-slate-300 border-dashed'
-                    bgClass = 'bg-slate-50'
-                    textClass = 'text-slate-500'
-                  }
-
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => toggleProcessIncluded(vs.id, i)}
-                      className={`text-left rounded-xl border-2 ${borderClass} ${bgClass} px-4 py-3 flex items-center justify-between transition-all hover:shadow-sm`}
-                    >
-                      <div>
-                        <p className={`text-sm font-semibold ${textClass}`}>{row.name}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">Snitt: {formatAvg(avg)}</p>
+                <div className="text-center text-sm font-bold text-[#1E293B] py-1 border-b border-slate-200">
+                  {vs.name}
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                  {vsRows.map((row, i) => {
+                    if (!row.name.trim()) return null
+                    const avg = calcWeightedAvg(row.scores, weights, allDims)
+                    const isAutoThreshold = autoIncluded(row.scores, weights, allDims)
+                    const state = row.included ? (isAutoThreshold ? 'auto' : 'manual') : 'excluded'
+                    const boxStyle = {
+                      auto:     { bg: '#D1FAE5', border: '2px solid #10B981' },
+                      manual:   { bg: '#F0FDF4', border: '2px dashed #10B981' },
+                      excluded: { bg: '#F8FAFC', border: '2px solid #E2E8F0' },
+                    }[state]
+                    const badgeStyle = {
+                      auto:     { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
+                      manual:   { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
+                      excluded: { bg: '#E2E8F0', color: '#64748B', text: 'Ikkje inkludert' },
+                    }[state]
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => toggleProcessIncluded(vs.id, i)}
+                        className="cursor-pointer rounded-lg p-2 text-center transition-all"
+                        style={{ background: boxStyle.bg, border: boxStyle.border, opacity: row.included ? 1 : 0.6 }}
+                      >
+                        <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(row.name)}</div>
+                        <div className="text-xs mt-1 text-slate-600">{formatAvg(avg)}</div>
+                        <div
+                          className="inline-block mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                          style={{ background: badgeStyle.bg, color: badgeStyle.color }}
+                        >
+                          {badgeStyle.text}
+                        </div>
                       </div>
-                      <span className={`text-xs font-medium ${row.included ? 'text-emerald-600' : 'text-slate-400'}`}>
-                        {row.included ? '✓ Inkludert' : '✕ Ikkje inkludert'}
-                      </span>
-                    </button>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             )
           })}
-        </div>
-
-        <div className="flex gap-4 text-xs text-slate-500 mt-1 flex-wrap">
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded border-2 border-emerald-400 bg-emerald-50 inline-block" />
-            Automatisk tilrådd
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded border-2 border-dashed border-emerald-400 bg-emerald-50 inline-block" />
-            Manuelt inkludert
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded border-2 border-dashed border-slate-300 bg-slate-50 inline-block" />
-            Ikkje inkludert
-          </span>
         </div>
       </div>
 
