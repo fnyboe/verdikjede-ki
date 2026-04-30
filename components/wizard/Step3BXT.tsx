@@ -249,14 +249,31 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
       const json = await res.json() as Record<string, unknown>
       if (res.ok && json.scores && typeof json.scores === 'object') {
         const aiScores = json.scores as Record<string, number>
-        const currentEntry = entries[process.id] ?? {
-          problem_desc: problemDesc, usecase_desc: usecaseDesc,
-          business_goal: '', key_results: '', responsible: '', bxt_scores: {},
+        setEntries(prev => ({
+          ...prev,
+          [process.id]: {
+            ...(prev[process.id] ?? {
+              problem_desc: problemDesc, usecase_desc: usecaseDesc,
+              business_goal: '', key_results: '', responsible: '', bxt_scores: {},
+            }),
+            bxt_scores: {
+              ...((prev[process.id]?.bxt_scores ?? {}) as Record<string, number | string>),
+              ...aiScores,
+            },
+          },
+        }))
+        // Build entry for DB save using params for problem/usecase (avoids stale closure)
+        const stale = entries[process.id]
+        const entryForSave: BxtEntry = {
+          problem_desc: problemDesc,
+          usecase_desc: usecaseDesc,
+          business_goal: stale?.business_goal ?? '',
+          key_results: stale?.key_results ?? '',
+          responsible: stale?.responsible ?? '',
+          bxt_scores: { ...(stale?.bxt_scores ?? {}), ...aiScores },
         }
-        const updatedEntry: BxtEntry = { ...currentEntry, bxt_scores: { ...currentEntry.bxt_scores, ...aiScores } }
-        setEntries(prev => ({ ...prev, [process.id]: updatedEntry }))
         const aiSuggestion = processes.find(p => p.id === process.id)?.ai_suggestion ?? null
-        await saveBxtDataAction(process.id, { ...updatedEntry, ai_suggestion: aiSuggestion })
+        await saveBxtDataAction(process.id, { ...entryForSave, ai_suggestion: aiSuggestion })
       }
     } catch {
       // AI error non-critical
