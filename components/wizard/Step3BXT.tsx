@@ -151,7 +151,11 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const allProcs: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
+        if (r.success && r.data) allProcs.push(...r.data.map(p => {
+          const bxt = (p.bxt_scores ?? {}) as Record<string, number | string>
+          const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
+          return { ...p, included: bxtScored && bxtAgg(bxt).total >= 4 }
+        }))
       }
       setProcesses(allProcs)
       const initEntries: Record<string, BxtEntry> = {}
@@ -569,7 +573,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                       {vsProcs.map(p => {
                         const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
-                        const autoIncl = simpleAvg(p.scores) >= 4
+                        const autoIncl = agg.total >= 4
                         const state = p.included ? (autoIncl ? 'auto' : 'manual') : 'excluded'
                         const boxStyle = {
                           auto:     { bg: '#D1FAE5', border: '2px solid #10B981' },
