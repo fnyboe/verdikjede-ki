@@ -68,6 +68,10 @@ function trunc(s: string, max = 22) {
 
 function DimTooltip({ label, tip }: { label: string; tip: string }) {
   const [show, setShow] = useState(false)
+  const lines = tip.split('\n').filter(l => {
+    const t = l.trim()
+    return t.length > 0 && !t.match(/^Variab[a-z]*:\s*$/i)
+  })
   return (
     <span
       className="relative cursor-help"
@@ -82,10 +86,12 @@ function DimTooltip({ label, tip }: { label: string; tip: string }) {
         >
           <span className="block bg-white rounded-lg p-3 text-left border border-slate-200 shadow-md">
             <span className="block text-xs font-bold text-[#1E293B] mb-2">Variablar:</span>
-            <span className="block text-xs font-semibold text-slate-700 mb-0.5">{label}</span>
-            {tip && (
-              <span className="block text-xs text-slate-500 leading-relaxed">{tip}</span>
-            )}
+            <span className="block text-xs font-semibold text-slate-700 mb-1.5">{label}</span>
+            <span className="flex flex-col gap-1">
+              {lines.map((line, i) => (
+                <span key={i} className="block text-xs text-slate-500 leading-snug">{line}</span>
+              ))}
+            </span>
           </span>
         </span>
       )}
