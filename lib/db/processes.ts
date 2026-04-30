@@ -46,15 +46,39 @@ export async function saveProcesses(
 
   if (rows.length === 0) return { success: true }
 
-  const { error: deleteError } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from('processes')
-    .delete()
+    .select('id')
     .eq('vc_step_id', vcStepId)
+    .order('order_index', { ascending: true })
 
-  if (deleteError) return { success: false, error: deleteError.message }
+  if (fetchError) return { success: false, error: fetchError.message }
+  const existingRows = (existing ?? []) as { id: string }[]
 
-  const { error: insertError } = await supabase.from('processes').insert(rows)
-  if (insertError) return { success: false, error: insertError.message }
+  for (let i = 0; i < Math.min(rows.length, existingRows.length); i++) {
+    const { error } = await supabase
+      .from('processes')
+      .update({
+        name: rows[i].name,
+        scores: rows[i].scores,
+        included: rows[i].included,
+        order_index: rows[i].order_index,
+        ai_suggestion: rows[i].ai_suggestion,
+      })
+      .eq('id', existingRows[i].id)
+    if (error) return { success: false, error: error.message }
+  }
+
+  if (rows.length > existingRows.length) {
+    const { error } = await supabase.from('processes').insert(rows.slice(existingRows.length))
+    if (error) return { success: false, error: error.message }
+  }
+
+  if (existingRows.length > rows.length) {
+    const idsToDelete = existingRows.slice(rows.length).map((r) => r.id)
+    const { error } = await supabase.from('processes').delete().in('id', idsToDelete)
+    if (error) return { success: false, error: error.message }
+  }
 
   return { success: true }
 }

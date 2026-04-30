@@ -234,7 +234,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
 
     const entry = entries[process.id]
-    if (entry?.problem_desc || entry?.usecase_desc || process.ai_suggestion) return
+    if (entry?.problem_desc && entry?.usecase_desc) return
 
     await runAIForProcess(process)
   }
