@@ -151,7 +151,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const allProcs: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: p.included ?? (simpleAvg(p.scores) >= 4) })))
+        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
       }
       setProcesses(allProcs)
       const initEntries: Record<string, BxtEntry> = {}
