@@ -231,13 +231,15 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId)
 
-  // Scatter plot covers ALL included processes across all vc_steps, coloured by vc_step
-  const plotProcesses: PlotProcess[] = processes.map(p => ({
-    ...p,
-    ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
-    vcColor: vcColorMap[p.vc_step_id ?? ''] ?? '#1E293B',
-    vcName: vcStepNames[p.vc_step_id ?? ''] ?? '',
-  }))
+  // Scatter plot covers only step-2-included processes across all vc_steps, coloured by vc_step
+  const plotProcesses: PlotProcess[] = processes
+    .filter(p => step2Included[p.id] ?? false)
+    .map(p => ({
+      ...p,
+      ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
+      vcColor: vcColorMap[p.vc_step_id ?? ''] ?? '#1E293B',
+      vcName: vcStepNames[p.vc_step_id ?? ''] ?? '',
+    }))
 
   const legendItems = vcGroups.map(({ vs, color }) => ({ id: vs.id, name: vs.name, color }))
 
