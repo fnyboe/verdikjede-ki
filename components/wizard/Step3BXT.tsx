@@ -89,23 +89,23 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
       <text x={tx(0)} y={ty(0) + 16} textAnchor="middle" fontSize={9} fill="#94A3B8">0</text>
 
       {/* Quadrant labels */}
-      <text x={tx(0) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#D97706">Utforsk videre</text>
-      <text x={tx(0) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#D97706">(seinare)</text>
-      <text x={tx(3) + 8} y={ty(5) + 16} fontSize={10} fontWeight="700" fill="#3B82F6">Utfør</text>
-      <text x={tx(3) + 8} y={ty(5) + 28} fontSize={10} fontWeight="700" fill="#3B82F6">oppgåveanalyse</text>
-      <text x={tx(0) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#EF4444">Sett på vent</text>
-      <text x={tx(3) + 8} y={ty(3) + 16} fontSize={10} fontWeight="700" fill="#10B981">Inkuber</text>
-      <text x={tx(3) + 8} y={ty(3) + 28} fontSize={10} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
+      <text x={tx(0) + 8} y={ty(5) + 16} fontSize={11} fontWeight="700" fill="#D97706">Utforsk videre</text>
+      <text x={tx(0) + 8} y={ty(5) + 28} fontSize={11} fontWeight="700" fill="#D97706">(seinare)</text>
+      <text x={tx(3) + 8} y={ty(5) + 16} fontSize={11} fontWeight="700" fill="#3B82F6">Utfør</text>
+      <text x={tx(3) + 8} y={ty(5) + 28} fontSize={11} fontWeight="700" fill="#3B82F6">oppgåveanalyse</text>
+      <text x={tx(0) + 8} y={ty(3) + 16} fontSize={11} fontWeight="700" fill="#EF4444">Sett på vent</text>
+      <text x={tx(3) + 8} y={ty(3) + 16} fontSize={11} fontWeight="700" fill="#10B981">Inkuber</text>
+      <text x={tx(3) + 8} y={ty(3) + 28} fontSize={11} fontWeight="700" fill="#10B981">(utvikle seinare)</text>
 
       {/* Axis labels */}
-      <text x={tx(2.5)} y={H - 2} textAnchor="middle" fontSize={12} fontWeight="700" fill="#475569">
+      <text x={tx(2.5)} y={H - 2} textAnchor="middle" fontSize={10} fontWeight="700" fill="#475569">
         Grad av gjennomførbarhet
       </text>
       <text
         x={12}
         y={ty(2.5)}
         textAnchor="middle"
-        fontSize={12}
+        fontSize={10}
         fontWeight="700"
         fill="#475569"
         transform={`rotate(-90, 12, ${ty(2.5)})`}
@@ -147,7 +147,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const included: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) included.push(...r.data.filter(p => p.included))
+        if (r.success && r.data) included.push(...r.data.filter(p => p.included).map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
       }
       setProcesses(included)
       const initEntries: Record<string, BxtEntry> = {}
@@ -549,9 +549,9 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
           {activeProcs.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-xl p-6 flex flex-col gap-4">
               <div>
-                <h3 className="text-base font-bold text-[#1E293B]">Prosessteg videre til oppgåveanalyse</h3>
+                <h3 className="text-base font-bold text-[#1E293B]">Prosessar vidare til oppgåveanalyse</h3>
                 <p className="text-sm text-slate-500 mt-1">
-                  Prosessteg med snitt ≥ 4 anbefales videre (markert med tykk ramme). Klikk for å ta med eller fjerne.
+                  Prosessar med snitt ≥ 4 anbefales vidare (markert med tykk ramme). Klikk for å ta med eller fjerne.
                 </p>
               </div>
               <div
@@ -566,7 +566,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                     <div
                       key={p.id}
                       onClick={() => handleToggleIncluded(p.id)}
-                      className="cursor-pointer rounded-xl p-3 text-center transition-all"
+                      className="cursor-pointer rounded-xl p-3 text-center transition-all flex flex-col items-center gap-0.5"
                       style={{
                         background: p.included ? col.bg : '#F8FAFC',
                         border: q
@@ -578,12 +578,13 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                       }}
                     >
                       <span
-                        className="inline-block w-3 h-3 rounded-full mb-1.5"
+                        className="inline-block w-3 h-3 rounded-full mb-1"
                         style={{ backgroundColor: p.included ? col.dot : '#CBD5E1' }}
                       />
-                      <div className="text-2xl font-bold mb-0.5" style={{ color: col.text }}>{agg.total}</div>
-                      <div className="text-xs font-bold break-words" style={{ color: col.text }}>{p.name}</div>
-                      <div className="text-xs opacity-70 mt-0.5">S:{agg.sA} G:{agg.fA}</div>
+                      <div className="text-xs text-slate-400 leading-tight">{vcStepNames[p.vc_step_id ?? ''] ?? ''}</div>
+                      <div className="text-xs font-bold break-words leading-snug" style={{ color: col.text }}>{p.name}</div>
+                      <div className="text-2xl font-bold mt-1" style={{ color: col.text }}>{agg.total}</div>
+                      <div className="text-xs opacity-70">S:{agg.sA} G:{agg.fA}</div>
                       <div
                         className="mt-2 inline-block px-2 py-0.5 rounded text-xs font-bold"
                         style={{ background: p.included ? '#D1FAE5' : '#E2E8F0', color: p.included ? '#065F46' : '#64748B' }}
