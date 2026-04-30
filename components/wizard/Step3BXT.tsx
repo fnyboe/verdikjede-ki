@@ -204,8 +204,8 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   const legendItems = vcGroups.map(({ vs, color }) => ({ name: vs.name, color }))
 
-  // Shared AI call used by both auto-open and manual regenerate
-  async function runAIForProcess(process: Process) {
+  // Shared AI call for problem/usecase — returns generated text so handleOpen can pass it to runAIForScores
+  async function runAIForProcess(process: Process): Promise<{ problem: string; ideas: string } | null> {
     const vsName = vcStepNames[process.vc_step_id ?? ''] ?? ''
     setAiLoading(prev => ({ ...prev, [process.id]: true }))
     try {
@@ -228,6 +228,35 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             : p
         ))
         await saveBxtDataAction(process.id, { ...updatedEntry, ai_suggestion: cached })
+        return { problem: json.problem, ideas: json.ideas }
+      }
+    } catch {
+      // AI error non-critical
+    } finally {
+      setAiLoading(prev => ({ ...prev, [process.id]: false }))
+    }
+    return null
+  }
+
+  async function runAIForScores(process: Process, problemDesc: string, usecaseDesc: string) {
+    setAiLoading(prev => ({ ...prev, [process.id]: true }))
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'steg3scores', processName: process.name, problemDesc, usecaseDesc }),
+      })
+      const json = await res.json() as Record<string, unknown>
+      if (res.ok && json.scores && typeof json.scores === 'object') {
+        const aiScores = json.scores as Record<string, number>
+        const currentEntry = entries[process.id] ?? {
+          problem_desc: problemDesc, usecase_desc: usecaseDesc,
+          business_goal: '', key_results: '', responsible: '', bxt_scores: {},
+        }
+        const updatedEntry: BxtEntry = { ...currentEntry, bxt_scores: { ...currentEntry.bxt_scores, ...aiScores } }
+        setEntries(prev => ({ ...prev, [process.id]: updatedEntry }))
+        const aiSuggestion = processes.find(p => p.id === process.id)?.ai_suggestion ?? null
+        await saveBxtDataAction(process.id, { ...updatedEntry, ai_suggestion: aiSuggestion })
       }
     } catch {
       // AI error non-critical
@@ -241,10 +270,25 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     setOpenId(process.id)
     setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
 
+    // Step 1: problem/usecase AI
     const entry = entries[process.id]
-    if (entry?.problem_desc && entry?.usecase_desc) return
+    let problemDesc = entry?.problem_desc || process.problem_desc || ''
+    let usecaseDesc = entry?.usecase_desc || process.usecase_desc || ''
 
-    await runAIForProcess(process)
+    if (!problemDesc || !usecaseDesc) {
+      const result = await runAIForProcess(process)
+      if (result) {
+        problemDesc = result.problem
+        usecaseDesc = result.ideas
+      }
+    }
+
+    // Step 2: BXT scores AI — skip if any score key already set in DB
+    const bxt = (process.bxt_scores ?? {}) as Record<string, number | string>
+    const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
+    if (!bxtScored) {
+      await runAIForScores(process, problemDesc, usecaseDesc)
+    }
   }
 
   async function handleRegenerateAI(process: Process) {

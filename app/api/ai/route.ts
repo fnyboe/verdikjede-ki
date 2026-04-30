@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { client, model } from '@/lib/ai/claude'
+import { BXT_CATS } from '@/lib/constants'
 import type { ImageBlockParam, TextBlockParam, DocumentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 
 type ContentBlock = TextBlockParam | ImageBlockParam | DocumentBlockParam
@@ -19,6 +20,10 @@ export async function POST(request: NextRequest) {
 
     if (action === 'steg3') {
       return handleSteg3(body)
+    }
+
+    if (action === 'steg3scores') {
+      return handleSteg3Scores(body)
     }
 
     return NextResponse.json({ error: 'Ukjend action' }, { status: 400 })
@@ -187,4 +192,68 @@ async function handleSteg3(body: Record<string, unknown>) {
   }
 
   return NextResponse.json({ problem: parsed.problem, ideas: parsed.ideas })
+}
+
+async function handleSteg3Scores(body: Record<string, unknown>) {
+  const { processName, problemDesc, usecaseDesc } = body as {
+    processName?: string
+    problemDesc?: string
+    usecaseDesc?: string
+  }
+
+  if (!processName?.trim()) {
+    return NextResponse.json({ error: 'processName er påkravd' }, { status: 400 })
+  }
+
+  const allItems = BXT_CATS.flatMap(cat =>
+    cat.items.map(item => ({ key: item.key, label: item.label, category: cat.label, tip: item.tip }))
+  )
+
+  const itemsDesc = allItems
+    .map(i => `- ${i.key} (${i.category} → ${i.label}): ${i.tip}`)
+    .join('\n')
+
+  const promptText = [
+    'Du er ein KI-rådgjevar som vurderer kor eigna ein prosess er for KI-implementering.',
+    `Prosess: ${processName}`,
+    problemDesc?.trim() ? `Problem: ${problemDesc}` : '',
+    usecaseDesc?.trim() ? `KI-brukstilfelle: ${usecaseDesc}` : '',
+    '',
+    'Gi ein score frå 1 til 5 for kvart av desse kriteria basert på prosessen ovanfor:',
+    '',
+    itemsDesc,
+    '',
+    'Returner KUN gyldig JSON i dette formatet, utan forklaring eller markdown:',
+    `{ "scores": { ${allItems.map(i => `"${i.key}": 3`).join(', ')} } }`,
+    'Alle nøklar må vere med. Verdiane skal vere heiltal mellom 1 og 5.',
+  ].filter(Boolean).join('\n')
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 512,
+    messages: [{ role: 'user', content: promptText }],
+  })
+
+  const raw = response.content.find((b) => b.type === 'text')
+  if (!raw || raw.type !== 'text') {
+    return NextResponse.json({ error: 'Tomt svar frå AI' }, { status: 500 })
+  }
+
+  const jsonMatch = raw.text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    return NextResponse.json({ error: 'Kunne ikkje parse AI-svar' }, { status: 500 })
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as { scores: Record<string, number> }
+  if (!parsed.scores || typeof parsed.scores !== 'object') {
+    return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
+  }
+
+  const validatedScores: Record<string, number> = {}
+  for (const { key } of allItems) {
+    const val = Number(parsed.scores[key])
+    validatedScores[key] = isNaN(val) ? 3 : Math.min(5, Math.max(1, Math.round(val)))
+  }
+
+  return NextResponse.json({ scores: validatedScores })
 }
