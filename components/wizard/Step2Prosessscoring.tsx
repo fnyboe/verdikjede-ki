@@ -122,6 +122,7 @@ export function Step2Prosessscoring({
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
+  const [scoreLoading, setScoreLoading] = useState<Record<string, boolean>>({})
   const firstTabNeedsAI = useRef(false)
 
   useEffect(() => {
@@ -181,10 +182,73 @@ export function Step2Prosessscoring({
     setShowAddDim(false)
   }
 
+  async function runAIScoresForTab(vsId: string, vsName: string, inputRows: ProcessRow[]) {
+    const toScore = inputRows.filter(
+      (row) =>
+        row.name.trim().length > 0 &&
+        row.ai_suggestion !== 'steg2scores' &&
+        !Object.values(row.scores).every((v) => v > 3)
+    )
+    if (toScore.length === 0) return
+
+    setScoreLoading((prev) => ({ ...prev, [vsId]: true }))
+
+    let localRows = [...inputRows]
+    let changed = false
+
+    for (let i = 0; i < inputRows.length; i++) {
+      const row = inputRows[i]
+      if (!row.name.trim()) continue
+      if (row.ai_suggestion === 'steg2scores') continue
+      if (Object.values(row.scores).every((v) => v > 3)) continue
+
+      try {
+        const res = await fetch('/api/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'steg2scores',
+            processName: row.name,
+            vcStepName: vsName,
+            analysisTitle,
+            dimKeys: allDims.map((d) => d.key),
+          }),
+        })
+        const json = await res.json() as Record<string, unknown>
+        if (res.ok && json.scores && typeof json.scores === 'object') {
+          const aiScores = json.scores as Record<string, number>
+          const newScores = { ...localRows[i].scores, ...aiScores }
+          const updatedRow: ProcessRow = {
+            ...localRows[i],
+            scores: newScores,
+            included: autoIncluded(newScores, weights, allDims),
+            ai_suggestion: 'steg2scores',
+          }
+          localRows = localRows.map((r, idx) => (idx === i ? updatedRow : r))
+          setRows((prev) => ({
+            ...prev,
+            [vsId]: prev[vsId].map((r, idx) => (idx === i ? updatedRow : r)),
+          }))
+          changed = true
+        }
+      } catch {
+        // AI-feil er ikkje kritisk
+      }
+    }
+
+    if (changed) {
+      await saveProcessesAction(analyseId, vsId, localRows)
+    }
+    setScoreLoading((prev) => ({ ...prev, [vsId]: false }))
+  }
+
   async function handleSelectTab(vsId: string, vsName: string) {
     setActiveTab(vsId)
-    if ((rows[vsId] ?? []).length === 0 && !aiLoading[vsId] && !isLoadingFromDB) {
+    const currentRows = rows[vsId] ?? []
+
+    if (currentRows.length === 0 && !aiLoading[vsId] && !isLoadingFromDB) {
       setAiLoading((prev) => ({ ...prev, [vsId]: true }))
+      let generated: ProcessRow[] = []
       try {
         const res = await fetch('/api/ai', {
           method: 'POST',
@@ -193,19 +257,22 @@ export function Step2Prosessscoring({
         })
         const json = await res.json()
         if (res.ok && Array.isArray(json.processes)) {
-          setRows((prev) => ({
-            ...prev,
-            [vsId]: json.processes.map((name: string) => {
-              const scores = defaultScores(allDims)
-              return { name, scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: 'steg2' }
-            }),
-          }))
+          generated = (json.processes as string[]).map((name) => {
+            const scores = defaultScores(allDims)
+            return { name, scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: 'steg2' }
+          })
+          setRows((prev) => ({ ...prev, [vsId]: generated }))
         }
       } catch {
         // AI-feil er ikkje kritisk — brukaren kan legge til prosessar manuelt
       } finally {
         setAiLoading((prev) => ({ ...prev, [vsId]: false }))
       }
+      if (generated.length > 0) {
+        await runAIScoresForTab(vsId, vsName, generated)
+      }
+    } else if (currentRows.length > 0 && !scoreLoading[vsId] && !isLoadingFromDB) {
+      await runAIScoresForTab(vsId, vsName, currentRows)
     }
   }
 
@@ -391,6 +458,15 @@ export function Step2Prosessscoring({
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                   <p className="text-sm font-medium text-[#10B981]">Genererer prosessforslag...</p>
+                </div>
+              )}
+              {scoreLoading[activeTab] && (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4 text-[#3B82F6] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <p className="text-sm font-medium text-[#3B82F6]">Genererer KI-scores...</p>
                 </div>
               )}
 

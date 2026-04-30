@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { client, model } from '@/lib/ai/claude'
-import { BXT_CATS } from '@/lib/constants'
+import { BXT_CATS, DIMS } from '@/lib/constants'
 import type { ImageBlockParam, TextBlockParam, DocumentBlockParam } from '@anthropic-ai/sdk/resources/messages'
 
 type ContentBlock = TextBlockParam | ImageBlockParam | DocumentBlockParam
@@ -24,6 +24,10 @@ export async function POST(request: NextRequest) {
 
     if (action === 'steg3scores') {
       return handleSteg3Scores(body)
+    }
+
+    if (action === 'steg2scores') {
+      return handleSteg2Scores(body)
     }
 
     return NextResponse.json({ error: 'Ukjend action' }, { status: 400 })
@@ -251,6 +255,71 @@ async function handleSteg3Scores(body: Record<string, unknown>) {
 
   const validatedScores: Record<string, number> = {}
   for (const { key } of allItems) {
+    const val = Number(parsed.scores[key])
+    validatedScores[key] = isNaN(val) ? 3 : Math.min(5, Math.max(1, Math.round(val)))
+  }
+
+  return NextResponse.json({ scores: validatedScores })
+}
+
+async function handleSteg2Scores(body: Record<string, unknown>) {
+  const { processName, vcStepName, analysisTitle, dimKeys } = body as {
+    processName?: string
+    vcStepName?: string
+    analysisTitle?: string
+    dimKeys?: string[]
+  }
+
+  if (!processName?.trim()) {
+    return NextResponse.json({ error: 'processName er påkravd' }, { status: 400 })
+  }
+
+  const items = dimKeys?.length
+    ? DIMS.filter((d) => dimKeys.includes(d.key))
+    : DIMS
+
+  const itemsDesc = items
+    .map((d) => `- ${d.key} (${d.label}): ${d.tip}`)
+    .join('\n')
+
+  const promptText = [
+    'Du er ein KI-rådgjevar som vurderer kor eigna ein prosess er for KI og automatisering i ein verdikjede.',
+    analysisTitle?.trim() ? `Bedrift/analyse: ${analysisTitle}` : '',
+    vcStepName?.trim() ? `Verdikjedesteg: ${vcStepName}` : '',
+    `Prosess: ${processName}`,
+    '',
+    'Gi ein score frå 1 til 5 for kvart av desse kriteria basert på prosessen ovanfor:',
+    '',
+    itemsDesc,
+    '',
+    'Returner KUN gyldig JSON i dette formatet, utan forklaring eller markdown:',
+    `{ "scores": { ${items.map((d) => `"${d.key}": 3`).join(', ')} } }`,
+    'Alle nøklar må vere med. Verdiane skal vere heiltal mellom 1 og 5.',
+  ].filter(Boolean).join('\n')
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 256,
+    messages: [{ role: 'user', content: promptText }],
+  })
+
+  const raw = response.content.find((b) => b.type === 'text')
+  if (!raw || raw.type !== 'text') {
+    return NextResponse.json({ error: 'Tomt svar frå AI' }, { status: 500 })
+  }
+
+  const jsonMatch = raw.text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    return NextResponse.json({ error: 'Kunne ikkje parse AI-svar' }, { status: 500 })
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as { scores: Record<string, number> }
+  if (!parsed.scores || typeof parsed.scores !== 'object') {
+    return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
+  }
+
+  const validatedScores: Record<string, number> = {}
+  for (const { key } of items) {
     const val = Number(parsed.scores[key])
     validatedScores[key] = isNaN(val) ? 3 : Math.min(5, Math.max(1, Math.round(val)))
   }
