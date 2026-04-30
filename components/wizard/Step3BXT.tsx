@@ -138,7 +138,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
           >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
             {showLabels && (
-              <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
+              <text x={cx + 8} y={cy + 4} fontSize={6} fontWeight="600" fill="#1E293B">{p.name}</text>
             )}
           </g>
         )
@@ -411,7 +411,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
               <h3 className="text-base font-bold text-[#1E293B]">Vurder kvar prosess</h3>
             </div>
             <div className="flex flex-col gap-1.5">
-              <p className="text-sm text-slate-500">Her er prosessane du tok med vidare frå den objektive vurderinga i steg 2 (score i parentes).</p>
+              <p className="text-sm text-slate-500">Her er prosessane du tok med vidare frå den objektive vurderinga i steg 2. Score frå steg 2 er vist i parentes.</p>
               <p className="text-sm text-slate-500">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
             </div>
 
