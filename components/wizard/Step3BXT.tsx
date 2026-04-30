@@ -481,10 +481,12 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                     style={{ background: isOpen ? '#1E293B' : '#FAFBFC', color: isOpen ? '#F8FAFC' : '#1E293B' }}
                   >
                     <span className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: isOpen ? '#F8FAFC' : col.dot }}
-                      />
+                      {isFromStep2 && (
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: isOpen ? '#F8FAFC' : col.dot }}
+                        />
+                      )}
                       <span className="text-sm font-bold truncate">{process.name}</span>
                       {isAiLoading && (
                         <span className="text-xs font-normal italic opacity-70 shrink-0">✦ Genererer KI-forslag...</span>
@@ -496,21 +498,23 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                         <span className="text-xs font-normal shrink-0" style={{ color: isOpen ? '#FCA5A5' : '#EF4444' }}>Feil ved lagring</span>
                       )}
                     </span>
-                    <span className="flex items-center gap-2 text-xs ml-3 shrink-0">
-                      <span style={{ opacity: 0.65 }}>S:{agg.sA} G:{agg.fA}</span>
-                      <span
-                        className="px-2 py-0.5 rounded font-bold"
-                        style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#F1F5F9' }}
-                      >
-                        {agg.total}
+                    {isFromStep2 && (
+                      <span className="flex items-center gap-2 text-xs ml-3 shrink-0">
+                        <span style={{ opacity: 0.65 }}>S:{agg.sA} G:{agg.fA}</span>
+                        <span
+                          className="px-2 py-0.5 rounded font-bold"
+                          style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#F1F5F9' }}
+                        >
+                          {agg.total}
+                        </span>
+                        <span
+                          className="px-2 py-0.5 rounded text-xs"
+                          style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#E2E8F0', color: isOpen ? '#F8FAFC' : '#64748B' }}
+                        >
+                          {isOpen ? 'Lukk ▲' : 'Åpne ▼'}
+                        </span>
                       </span>
-                      <span
-                        className="px-2 py-0.5 rounded text-xs"
-                        style={{ background: isOpen ? 'rgba(255,255,255,0.15)' : '#E2E8F0', color: isOpen ? '#F8FAFC' : '#64748B' }}
-                      >
-                        {isOpen ? 'Lukk ▲' : 'Åpne ▼'}
-                      </span>
-                    </span>
+                    )}
                   </button>
 
                   {/* Accordion body */}
