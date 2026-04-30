@@ -120,7 +120,7 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
         return (
           <g key={p.id}>
             <circle cx={cx} cy={cy} r={7} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
-            <text x={cx + 12} y={cy + 4} fontSize={10} fontWeight="600" fill="#1E293B">{p.name}</text>
+            <text x={cx + 12} y={cy + 4} fontSize={9} fontWeight="600" fill="#1E293B">{p.name}</text>
           </g>
         )
       })}
@@ -448,7 +448,8 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                     placeholder={placeholder}
                                     value={entry[field]}
                                     onChange={e => setTextField(process.id, field, e.target.value)}
-                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-y leading-relaxed w-full"
+                                    onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px' }}
+                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden"
                                     style={{ background: isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
                                   />
                                 </>
