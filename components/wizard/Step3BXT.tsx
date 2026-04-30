@@ -58,7 +58,7 @@ function getScoreColor(v: number) {
   return { dot: '#EF4444', bg: '#FEE2E2', text: '#991B1B' }
 }
 
-type PlotProcess = Process & { sA: number; fA: number; total: number; vcColor: string }
+type PlotProcess = Process & { sA: number; fA: number; total: number; vcColor: string; vcName: string }
 
 function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
   const W = 560
@@ -71,8 +71,16 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
   const tx = (v: number) => PAD + (v / 5) * cW
   const ty = (v: number) => PADT + cH - (v / 5) * cH
 
+  const [tooltip, setTooltip] = useState<{ name: string; vcName: string; cx: number; cy: number } | null>(null)
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ fontFamily: "'DM Sans',sans-serif", overflow: 'visible' }}>
+      <defs>
+        <filter id="tt-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#00000018" />
+        </filter>
+      </defs>
+
       {/* Quadrant backgrounds — divided at score 3 */}
       <rect x={tx(0)} y={ty(5)} width={tx(3) - tx(0)} height={ty(3) - ty(5)} fill="#FEF9C3" opacity="0.5" />
       <rect x={tx(3)} y={ty(5)} width={tx(5) - tx(3)} height={ty(3) - ty(5)} fill="#DBEAFE" opacity="0.5" />
@@ -83,7 +91,7 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
       <line x1={tx(3)} y1={ty(5)} x2={tx(3)} y2={ty(0)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
       <line x1={tx(0)} y1={ty(3)} x2={tx(5)} y2={ty(3)} stroke="#CBD5E1" strokeWidth="1.5" strokeDasharray="6,4" />
 
-      {/* Axis ticks — smaller font */}
+      {/* Axis ticks */}
       {[1, 2, 3, 4, 5].map(v => (
         <g key={v}>
           <text x={tx(v)} y={ty(0) + 16} textAnchor="middle" fontSize={8} fill="#94A3B8">{v}</text>
@@ -117,17 +125,35 @@ function ScatterPlot({ processes }: { processes: PlotProcess[] }) {
         Grad av strategisk forretningseffekt
       </text>
 
-      {/* Process dots + name labels — colour by vc_step */}
+      {/* Process dots — colour by vc_step, tooltip on hover */}
       {processes.map(p => {
         const cx = tx(p.fA)
         const cy = ty(p.sA)
         return (
-          <g key={p.id}>
+          <g
+            key={p.id}
+            onMouseOver={() => setTooltip({ name: p.name, vcName: p.vcName, cx, cy })}
+            onMouseOut={() => setTooltip(null)}
+            style={{ cursor: 'pointer' }}
+          >
             <circle cx={cx} cy={cy} r={4} fill={p.vcColor} stroke="#fff" strokeWidth={2} />
-            <text x={cx + 8} y={cy + 4} fontSize={8} fontWeight="600" fill="#1E293B">{p.name}</text>
           </g>
         )
       })}
+
+      {/* Tooltip */}
+      {tooltip !== null && (() => {
+        const TW = 164, TH = 38, TP = 7
+        const ttx = Math.min(tooltip.cx + 10, W - TW - 4)
+        const tty = Math.max(tooltip.cy - TH - 6, 4)
+        return (
+          <g style={{ pointerEvents: 'none' }}>
+            <rect x={ttx} y={tty} width={TW} height={TH} rx={4} fill="white" stroke="#E2E8F0" strokeWidth={1} filter="url(#tt-shadow)" />
+            <text x={ttx + TP} y={tty + 14} fontSize={9} fontWeight="700" fill="#1E293B">{trunc(tooltip.name, 20)}</text>
+            <text x={ttx + TP} y={tty + 28} fontSize={8} fill="#64748B">{trunc(tooltip.vcName, 22)}</text>
+          </g>
+        )
+      })()}
     </svg>
   )
 }
@@ -146,6 +172,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const [problemChanged, setProblemChanged] = useState<Record<string, boolean>>({})
   const [saveError, setSaveError] = useState<Record<string, string | null>>({})
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
+  const [plotFilter, setPlotFilter] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
@@ -200,9 +227,14 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     ...p,
     ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
     vcColor: vcColorMap[p.vc_step_id ?? ''] ?? '#1E293B',
+    vcName: vcStepNames[p.vc_step_id ?? ''] ?? '',
   }))
 
-  const legendItems = vcGroups.map(({ vs, color }) => ({ name: vs.name, color }))
+  const legendItems = vcGroups.map(({ vs, color }) => ({ id: vs.id, name: vs.name, color }))
+
+  const filteredPlotProcesses = plotFilter
+    ? plotProcesses.filter(p => p.vc_step_id === plotFilter)
+    : plotProcesses
 
   // Shared AI call for problem/usecase — returns generated text so handleOpen can pass it to runAIForScores
   async function runAIForProcess(process: Process): Promise<{ problem: string; ideas: string } | null> {
@@ -589,28 +621,40 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             })}
           </div>
 
-          {/* Scatter plot — all included processes, coloured by vc_step */}
+          {/* Scatter plot — filter buttons top-right, tooltip on hover */}
           {processes.length > 0 && (
             <div className="bg-white border border-slate-200 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-[#1E293B] mb-4">KI-egnethet (indikasjon)</h3>
-              <div className="flex gap-6 items-start">
-                <div className="flex-1 overflow-x-auto min-w-0">
-                  <ScatterPlot processes={plotProcesses} />
+              <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+                <h3 className="text-xl font-bold text-[#1E293B]">KI-eignetheit (indikasjon)</h3>
+                <div className="flex gap-1.5 flex-wrap justify-end">
+                  <button
+                    onClick={() => setPlotFilter(null)}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold border transition-colors ${
+                      plotFilter === null
+                        ? 'bg-[#1E293B] text-white border-[#1E293B]'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    Alle
+                  </button>
+                  {legendItems.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setPlotFilter(plotFilter === item.id ? null : item.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-semibold border transition-colors ${
+                        plotFilter === item.id
+                          ? 'text-white border-transparent'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                      }`}
+                      style={plotFilter === item.id ? { backgroundColor: item.color, borderColor: item.color } : {}}
+                    >
+                      <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      {item.name}
+                    </button>
+                  ))}
                 </div>
-                {legendItems.length > 0 && (
-                  <div className="flex flex-col gap-2 shrink-0 w-44 pt-6">
-                    {legendItems.map(item => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <span
-                          className="inline-block w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-xs text-slate-600 font-medium leading-tight">{item.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
+              <ScatterPlot processes={filteredPlotProcesses} />
             </div>
           )}
 
