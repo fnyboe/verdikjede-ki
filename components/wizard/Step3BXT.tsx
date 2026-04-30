@@ -145,13 +145,13 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   useEffect(() => {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
-      const included: Process[] = []
+      const allProcs: Process[] = []
       for (const r of results) {
-        if (r.success && r.data) included.push(...r.data.filter(p => p.included).map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
+        if (r.success && r.data) allProcs.push(...r.data.map(p => ({ ...p, included: simpleAvg(p.scores) >= 4 })))
       }
-      setProcesses(included)
+      setProcesses(allProcs)
       const initEntries: Record<string, BxtEntry> = {}
-      for (const p of included) {
+      for (const p of allProcs) {
         initEntries[p.id] = {
           problem_desc: p.problem_desc ?? '',
           usecase_desc: p.usecase_desc ?? '',
@@ -162,7 +162,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
         }
       }
       setEntries(initEntries)
-      const firstVc = vcSteps.find(vs => included.some(p => p.vc_step_id === vs.id))
+      const firstVc = vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
       if (firstVc) setActiveVcId(firstVc.id)
       setIsLoadingFromDB(false)
     })
@@ -172,7 +172,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   // vc_steps that have at least one included process, with tab score and plot colour
   const vcGroups = vcSteps
     .map((vs, idx) => {
-      const procs = processes.filter(p => p.vc_step_id === vs.id && p.included)
+      const procs = processes.filter(p => p.vc_step_id === vs.id)
       if (!procs.length) return null
       const tabScore = Math.round(
         procs.reduce((s, p) => s + simpleAvg(p.scores), 0) / procs.length * 10
@@ -185,7 +185,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     vcGroups.map(({ vs, color }) => [vs.id, color])
   )
 
-  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
+  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId)
 
   // Scatter plot covers ALL included processes across all vc_steps, coloured by vc_step
   const plotProcesses: PlotProcess[] = processes.map(p => ({
