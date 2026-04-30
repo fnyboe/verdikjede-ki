@@ -140,7 +140,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState<Record<string, boolean>>({})
   const [problemChanged, setProblemChanged] = useState<Record<string, boolean>>({})
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<Record<string, string | null>>({})
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
 
   useEffect(() => {
@@ -244,13 +244,13 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     await runAIForProcess(process)
   }
 
-  async function handleSave(processId: string) {
-    setSaveError(null)
-    setSaving(prev => ({ ...prev, [processId]: true }))
+  async function handleAutoSave(processId: string) {
     const entry = entries[processId]
+    if (!entry) return
+    setSaving(prev => ({ ...prev, [processId]: true }))
     const aiSuggestion = processes.find(p => p.id === processId)?.ai_suggestion ?? null
     const result = await saveBxtDataAction(processId, { ...entry, ai_suggestion: aiSuggestion })
-    if (!result.success) setSaveError(result.error ?? 'Kunne ikkje lagre')
+    setSaveError(prev => ({ ...prev, [processId]: result.success ? null : (result.error ?? 'Kunne ikkje lagre') }))
     setSaving(prev => ({ ...prev, [processId]: false }))
   }
 
@@ -376,6 +376,12 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                       {isAiLoading && (
                         <span className="text-xs font-normal italic opacity-70 shrink-0">✦ Genererer KI-forslag...</span>
                       )}
+                      {isSaving && !isAiLoading && (
+                        <span className="text-xs font-normal italic opacity-70 shrink-0">Lagrar...</span>
+                      )}
+                      {saveError[process.id] && !isSaving && !isAiLoading && (
+                        <span className="text-xs font-normal shrink-0" style={{ color: isOpen ? '#FCA5A5' : '#EF4444' }}>Feil ved lagring</span>
+                      )}
                     </span>
                     <span className="flex items-center gap-2 text-xs ml-3 shrink-0">
                       <span style={{ opacity: 0.65 }}>S:{agg.sA} G:{agg.fA}</span>
@@ -448,6 +454,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                     placeholder={placeholder}
                                     value={entry[field]}
                                     onChange={e => setTextField(process.id, field, e.target.value)}
+                                    onBlur={() => handleAutoSave(process.id)}
                                     onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px' }}
                                     className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden"
                                     style={{ background: isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
@@ -485,12 +492,14 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                                         placeholder="Kommentar..."
                                         value={String(entry.bxt_scores[`${item.key}_comment`] ?? '')}
                                         onChange={e => setComment(process.id, item.key, e.target.value)}
+                                        onBlur={() => handleAutoSave(process.id)}
                                         className="px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full"
                                       />
                                       <select
                                         key={`${item.key}-score`}
                                         value={Number(entry.bxt_scores[item.key] ?? 3)}
                                         onChange={e => setScore(process.id, item.key, Number(e.target.value))}
+                                        onBlur={() => handleAutoSave(process.id)}
                                         className="w-full py-1.5 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer"
                                       >
                                         {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
@@ -503,17 +512,6 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                           </div>
                         )}
 
-                        {saveError && openId === process.id && (
-                          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{saveError}</p>
-                        )}
-
-                        <Button
-                          onClick={() => handleSave(process.id)}
-                          disabled={isSaving}
-                          className="self-start bg-[#1E293B] hover:bg-slate-700 text-white disabled:opacity-50"
-                        >
-                          {isSaving ? 'Lagrar...' : 'Lagre'}
-                        </Button>
                       </div>
                     </div>
                   )}
