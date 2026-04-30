@@ -231,9 +231,9 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId)
 
-  // Scatter plot covers only step-2-included processes across all vc_steps, coloured by vc_step
+  // Scatter plot covers only BXT-included processes across all vc_steps, coloured by vc_step
   const plotProcesses: PlotProcess[] = processes
-    .filter(p => step2Included[p.id] ?? false)
+    .filter(p => p.included)
     .map(p => ({
       ...p,
       ...bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>),
@@ -241,7 +241,9 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
       vcName: vcStepNames[p.vc_step_id ?? ''] ?? '',
     }))
 
-  const legendItems = vcGroups.map(({ vs, color }) => ({ id: vs.id, name: vs.name, color }))
+  const legendItems = vcGroups
+    .filter(({ procs }) => procs.some(p => p.included))
+    .map(({ vs, color }) => ({ id: vs.id, name: vs.name, color }))
 
   const filteredPlotProcesses = plotFilter
     ? plotProcesses.filter(p => p.vc_step_id === plotFilter)
