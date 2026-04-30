@@ -175,19 +175,23 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const [problemChanged, setProblemChanged] = useState<Record<string, boolean>>({})
   const [saveError, setSaveError] = useState<Record<string, string | null>>({})
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
+  const [step2Included, setStep2Included] = useState<Record<string, boolean>>({})
   const [plotFilter, setPlotFilter] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
       const allProcs: Process[] = []
+      const s2inc: Record<string, boolean> = {}
       for (const r of results) {
         if (r.success && r.data) allProcs.push(...r.data.map(p => {
           const bxt = (p.bxt_scores ?? {}) as Record<string, number | string>
           const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
+          s2inc[p.id] = p.included
           return { ...p, included: bxtScored && bxtAgg(bxt).total >= 4 }
         }))
       }
       setProcesses(allProcs)
+      setStep2Included(s2inc)
       const initEntries: Record<string, BxtEntry> = {}
       for (const p of allProcs) {
         initEntries[p.id] = {
@@ -200,7 +204,9 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
         }
       }
       setEntries(initEntries)
-      const firstVc = vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
+      const firstVc =
+        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id && s2inc[p.id])) ??
+        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
       if (firstVc) setActiveVcId(firstVc.id)
       setIsLoadingFromDB(false)
     })
@@ -318,6 +324,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   }
 
   async function handleOpen(process: Process) {
+    if (!(step2Included[process.id] ?? false)) return
     if (openId === process.id) { setOpenId(null); return }
     setOpenId(process.id)
     setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
@@ -419,13 +426,17 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             <div className="flex gap-2 flex-wrap">
               {vcGroups.map(({ vs, tabScore }) => {
                 const active = vs.id === activeVcId
+                const vsIncluded = processes.some(p => p.vc_step_id === vs.id && (step2Included[p.id] ?? false))
                 return (
                   <button
                     key={vs.id}
-                    onClick={() => { setActiveVcId(vs.id); setOpenId(null) }}
+                    onClick={() => { if (!vsIncluded) return; setActiveVcId(vs.id); setOpenId(null) }}
+                    disabled={!vsIncluded}
                     className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
-                      active
-                        ? 'bg-[#1E293B] text-white border-[#1E293B]'
+                      !vsIncluded
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed'
+                        : active
+                        ? 'bg-[#059669] text-white border-[#059669]'
                         : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                     }`}
                   >
@@ -451,17 +462,18 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
               const tab = activeTab[process.id] ?? 'problem'
               const agg = bxtAgg(entry.bxt_scores)
               const col = getScoreColor(agg.total)
+              const isFromStep2 = step2Included[process.id] ?? false
 
               return (
                 <div
                   key={process.id}
                   className="rounded-xl overflow-hidden"
-                  style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0' }}
+                  style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0', opacity: isFromStep2 ? 1 : 0.4 }}
                 >
                   {/* Accordion header */}
                   <button
                     onClick={() => handleOpen(process)}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
+                    className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors${!isFromStep2 ? ' cursor-not-allowed' : ''}`}
                     style={{ background: isOpen ? '#1E293B' : '#FAFBFC', color: isOpen ? '#F8FAFC' : '#1E293B' }}
                   >
                     <span className="flex items-center gap-2 min-w-0">
