@@ -25,8 +25,9 @@ export async function getTasksByAnalysis(analysisId: string): Promise<ServerActi
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
     .from('tasks')
-    .select('*, processes!inner(analysis_id)')
+    .select('*, processes!inner(analysis_id, included)')
     .eq('processes.analysis_id', analysisId)
+    .eq('processes.included', true)
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: data as Task[] }
