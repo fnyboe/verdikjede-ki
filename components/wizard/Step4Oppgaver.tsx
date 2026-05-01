@@ -166,7 +166,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
       for (const r of results) {
         if (r.success && r.data) {
           allProcs.push(...r.data.map(p => {
-            s3inc[p.id] = p.included === true || (p.included as unknown) === 1
+            s3inc[p.id] = p.included
             return { ...p }
           }))
         }
