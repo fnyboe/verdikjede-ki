@@ -49,7 +49,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
       const allProcs: Process[] = []
       for (const r of results) {
         if (r.success && r.data) {
-          allProcs.push(...r.data.filter(p => p.included))
+          allProcs.push(...r.data.filter(p => p.included === true || (p.included as unknown) === 1))
         }
       }
       setProcesses(allProcs)
