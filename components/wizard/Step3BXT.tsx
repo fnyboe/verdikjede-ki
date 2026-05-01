@@ -184,10 +184,8 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
       const s2inc: Record<string, boolean> = {}
       for (const r of results) {
         if (r.success && r.data) allProcs.push(...r.data.map(p => {
-          const bxt = (p.bxt_scores ?? {}) as Record<string, number | string>
-          const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
           s2inc[p.id] = p.included
-          return { ...p, included: bxtScored && bxtAgg(bxt).total >= 4 }
+          return { ...p }
         }))
       }
       setProcesses(allProcs)
