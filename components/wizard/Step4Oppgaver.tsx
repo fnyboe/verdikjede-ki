@@ -87,6 +87,26 @@ function ScoreSelect({
   )
 }
 
+function ThTooltip({ label, tip }: { label: string; tip: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <span
+      className="relative cursor-help inline-block"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      {label}
+      {show && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none" style={{ width: '240px' }}>
+          <span className="block bg-white rounded-lg p-2 border border-slate-200 shadow-md text-xs text-slate-600 font-normal text-left leading-snug">
+            {tip}
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
 export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const router = useRouter()
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
@@ -456,9 +476,19 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                     <tr className="border-b-2 border-slate-200">
                       <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[140px]">Prosess</th>
                       <th className="text-left py-2 pr-4 font-semibold text-slate-600">Oppgåve</th>
-                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-12">Auto</th>
-                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-12">Forb.</th>
-                      <th className="text-center py-2 pr-4 font-semibold text-slate-600 w-12">Score</th>
+                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-28">
+                        <ThTooltip
+                          label="Automatisering"
+                          tip="Standardisering, grad av regelstyring, variasjon i input, behov for menneskelig involvering, datatilgang og kvalitet"
+                        />
+                      </th>
+                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-24">
+                        <ThTooltip
+                          label="Forbedring"
+                          tip="Tidsbruk per utførelse, kostnad per utførelse, hyppighet/volum, feilrate/omarbeid, belastning på ansatte"
+                        />
+                      </th>
+                      <th className="text-center py-2 pr-4 font-semibold text-slate-600 w-14">Score</th>
                       <th className="text-left py-2 font-semibold text-slate-600 hidden lg:table-cell">Teknologi</th>
                     </tr>
                   </thead>
@@ -469,16 +499,50 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                         const sc = scoreStyle(task.automation, task.improvement)
                         return (
                           <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                            <td className="py-2 pr-4 align-middle">
+                            <td className="py-1.5 pr-4 align-middle">
                               {ti === 0 ? <span className="font-semibold text-[#1E293B]">{p.name}</span> : null}
                             </td>
-                            <td className="py-2 pr-4 align-middle font-semibold text-[#1E293B]">{task.name}</td>
-                            <td className="py-2 pr-3 align-middle text-center text-slate-600">{task.automation}</td>
-                            <td className="py-2 pr-3 align-middle text-center text-slate-600">{task.improvement}</td>
-                            <td className="py-2 pr-4 align-middle text-center">
+                            <td className="py-1.5 pr-4 align-middle">
+                              <input
+                                type="text"
+                                value={task.name}
+                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'name', e.target.value)}
+                                onBlur={() => handleSaveTask(task.id, p.id)}
+                                className="w-full font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
+                              />
+                            </td>
+                            <td className="py-1.5 pr-3 align-middle text-center">
+                              <select
+                                value={task.automation}
+                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'automation', Number(e.target.value))}
+                                onBlur={() => handleSaveTask(task.id, p.id)}
+                                className="w-12 py-0.5 border border-slate-200 rounded text-xs text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer text-slate-600"
+                              >
+                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-1.5 pr-3 align-middle text-center">
+                              <select
+                                value={task.improvement}
+                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'improvement', Number(e.target.value))}
+                                onBlur={() => handleSaveTask(task.id, p.id)}
+                                className="w-12 py-0.5 border border-slate-200 rounded text-xs text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer text-slate-600"
+                              >
+                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            </td>
+                            <td className="py-1.5 pr-4 align-middle text-center">
                               <span className="inline-block px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: sc.bg, color: sc.text }}>{sc.s}</span>
                             </td>
-                            <td className="py-2 align-middle text-slate-500 hidden lg:table-cell">{task.tech}</td>
+                            <td className="py-1.5 align-middle hidden lg:table-cell">
+                              <input
+                                type="text"
+                                value={task.tech}
+                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'tech', e.target.value)}
+                                onBlur={() => handleSaveTask(task.id, p.id)}
+                                className="w-full text-slate-500 bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
+                              />
+                            </td>
                           </tr>
                         )
                       })
