@@ -19,6 +19,9 @@ export interface Analysis {
   company_id: string
   title: string
   weights: Record<string, number>
+  vc_control: string | null
+  tech_breadth: string | null
+  strategy_text: string | null
   created_at: string
   updated_at: string
 }

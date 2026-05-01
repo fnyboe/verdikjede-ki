@@ -34,6 +34,10 @@ export async function POST(request: NextRequest) {
       return handleSteg4(body)
     }
 
+    if (action === 'steg5') {
+      return handleSteg5(body)
+    }
+
     return NextResponse.json({ error: 'Ukjend action' }, { status: 400 })
   } catch (err) {
     console.error('[api/ai] error:', err)
@@ -406,4 +410,65 @@ async function handleSteg4(body: Record<string, unknown>) {
   }))
 
   return NextResponse.json({ tasks: validatedTasks })
+}
+
+async function handleSteg5(body: Record<string, unknown>) {
+  const { strategyKey, strategyTitle, analysisTitle, tasks } = body as {
+    strategyKey?: string
+    strategyTitle?: string
+    analysisTitle?: string
+    tasks?: Array<{ name: string; tech: string }>
+  }
+
+  if (!strategyKey?.trim()) {
+    return NextResponse.json({ error: 'strategyKey er påkravd' }, { status: 400 })
+  }
+
+  const taskList = Array.isArray(tasks) && tasks.length > 0
+    ? tasks.map(t => `- ${t.name}${t.tech ? ` (${t.tech})` : ''}`).join('\n')
+    : '(ingen oppgåver tilgjengelege)'
+
+  const promptText = [
+    'Du er ein strategisk KI-rådgjevar som hjelper norske bedrifter å implementere KI.',
+    analysisTitle?.trim() ? `Bedrift/analyse: ${analysisTitle}` : '',
+    '',
+    `Tilrådd strategi: ${strategyTitle ?? strategyKey}`,
+    '',
+    'Dei viktigaste KI-oppgåvene identifisert i analysen:',
+    taskList,
+    '',
+    'Skriv ein strategisk implementeringsplan på norsk (3–4 avsnitt) som:',
+    '1. Forklarer kvifor denne strategien passar for bedrifta',
+    '2. Skisserer dei viktigaste stega for å kome i gang',
+    '3. Trekkjer fram dei høgast prioriterte KI-oppgåvene frå lista over',
+    '4. Gir konkrete råd om ressursar, tidslinje og suksessfaktorar',
+    '',
+    'Skriv direkte og handlingsorientert. Unngå generiske formuleringar.',
+    '',
+    'Returner KUN gyldig JSON utan forklaring eller markdown:',
+    '{ "strategy_text": "..." }',
+  ].filter(Boolean).join('\n')
+
+  const response = await client.messages.create({
+    model,
+    max_tokens: 2048,
+    messages: [{ role: 'user', content: promptText }],
+  })
+
+  const raw = response.content.find((b) => b.type === 'text')
+  if (!raw || raw.type !== 'text') {
+    return NextResponse.json({ error: 'Tomt svar frå AI' }, { status: 500 })
+  }
+
+  const jsonMatch = raw.text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    return NextResponse.json({ error: 'Kunne ikkje parse AI-svar' }, { status: 500 })
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]) as { strategy_text: string }
+  if (typeof parsed.strategy_text !== 'string') {
+    return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
+  }
+
+  return NextResponse.json({ strategy_text: parsed.strategy_text })
 }

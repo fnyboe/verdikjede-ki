@@ -4,11 +4,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { Step1Verdikjede } from '@/components/wizard/Step1Verdikjede'
 import { Step2Prosessscoring } from '@/components/wizard/Step2Prosessscoring'
 import { Step3BXT } from '@/components/wizard/Step3BXT'
 import { Step4Oppgaver } from '@/components/wizard/Step4Oppgaver'
+import { Step5Strategi } from '@/components/wizard/Step5Strategi'
 import { WizardSteps } from '@/components/wizard/WizardSteps'
 import type { VcStep } from '@/types'
 
@@ -106,27 +106,12 @@ export default async function StegPage({ params }: Props) {
           <p className="text-sm text-slate-500">{analyse.title}</p>
           <WizardSteps stegNr={stegNr} />
         </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
-          Wizard-innhald kjem i Fase 5.
-        </div>
-
-        <div className="flex justify-between">
-          <Link
-            href={`/analyse/${id}/steg/${stegNr - 1}`}
-            className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-          >
-            ← Førre steg
-          </Link>
-          {stegNr < 5 && (
-            <Link
-              href={`/analyse/${id}/steg/${stegNr + 1}`}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#10B981] hover:bg-[#059669] rounded-lg transition-colors"
-            >
-              Neste steg →
-            </Link>
-          )}
-        </div>
+        <Step5Strategi
+          key={Date.now()}
+          analyseId={id}
+          analysisTitle={analyse.title}
+          analysis={analyse}
+        />
       </div>
     )
   }

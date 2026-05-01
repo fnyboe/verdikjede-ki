@@ -42,6 +42,20 @@ export async function getAnalysisById(id: string): Promise<ServerActionResult<An
   return { success: true, data: data as Analysis }
 }
 
+export async function saveStrategy(
+  analysisId: string,
+  data: { vc_control: string; tech_breadth: string; strategy_text: string | null }
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase
+    .from('analyses')
+    .update(data)
+    .eq('id', analysisId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function createAnalysis(companyId: string, title: string): Promise<ServerActionResult<Analysis>> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase

@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { saveVcSteps } from '@/lib/db/vc_steps'
 import { getProcessesByVcStep, saveProcesses, saveWeights, updateProcessDesc, saveBxtData, saveProcessIncluded } from '@/lib/db/processes'
 import { getTasksByProcess, saveTasks, deleteTask, updateTask } from '@/lib/db/tasks'
+import { saveStrategy } from '@/lib/db/analyses'
 import type { Process, Task, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
@@ -282,6 +283,33 @@ export async function deleteTaskAction(taskId: string): Promise<ServerActionResu
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { success: false, error: 'Ikkje innlogga' }
   return deleteTask(taskId)
+}
+
+export async function saveStrategyAction(
+  analyseId: string,
+  data: { vc_control: string; tech_breadth: string; strategy_text: string | null }
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  const { data: analyse } = await supabase
+    .from('analyses')
+    .select('company_id')
+    .eq('id', analyseId)
+    .single()
+
+  if (!analyse || analyse.company_id !== profile?.company_id) {
+    return { success: false, error: 'Ingen tilgang til denne analysen' }
+  }
+
+  return saveStrategy(analyseId, data)
 }
 
 export async function updateTaskAction(
