@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
+import { getTasksByAnalysis } from '@/lib/db/tasks'
 import { redirect } from 'next/navigation'
 import { Step1Verdikjede } from '@/components/wizard/Step1Verdikjede'
 import { Step2Prosessscoring } from '@/components/wizard/Step2Prosessscoring'
@@ -100,6 +101,9 @@ export default async function StegPage({ params }: Props) {
       </div>
     )
   } else {
+    const tasksResult = await getTasksByAnalysis(id)
+    const initialTasks = tasksResult.data ?? []
+
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-3">
@@ -111,6 +115,7 @@ export default async function StegPage({ params }: Props) {
           analyseId={id}
           analysisTitle={analyse.title}
           analysis={analyse}
+          initialTasks={initialTasks}
         />
       </div>
     )

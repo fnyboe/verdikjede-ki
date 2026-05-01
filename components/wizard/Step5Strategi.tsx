@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { getTasksByAnalysis } from '@/lib/db/tasks'
 import { saveStrategyAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
 import { STRATS } from '@/lib/constants'
@@ -12,6 +11,7 @@ interface Props {
   analyseId: string
   analysisTitle: string
   analysis: Analysis
+  initialTasks: Task[]
 }
 
 type VcControl = 'low' | 'high'
@@ -33,7 +33,7 @@ function Spinner() {
   )
 }
 
-export function Step5Strategi({ analyseId, analysisTitle, analysis }: Props) {
+export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks }: Props) {
   const router = useRouter()
 
   const [vcControl, setVcControl] = useState<VcControl | null>(
@@ -45,16 +45,9 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis }: Props) {
   const [strategyText, setStrategyText] = useState<string | null>(
     analysis.strategy_text ?? null
   )
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasks] = useState<Task[]>(initialTasks)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
-
-  useEffect(() => {
-    getTasksByAnalysis(analyseId).then(r => {
-      if (r.success && r.data) setTasks(r.data)
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   useEffect(() => {
     if (!vcControl || !techBreadth) return
