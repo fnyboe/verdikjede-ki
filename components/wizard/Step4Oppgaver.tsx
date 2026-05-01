@@ -282,14 +282,15 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
   const vcGroups = vcSteps
     .map(vs => {
-      const procs = processes.filter(p => p.vc_step_id === vs.id)
+      const procs = processes.filter(p => p.vc_step_id === vs.id && (step3Included[p.id] ?? false))
       if (!procs.length) return null
       return { vs, procs }
     })
     .filter((g): g is { vs: VcStep; procs: Process[] } => g !== null)
 
-  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId)
-  const allTasks = processes.flatMap(p => tasks[p.id] ?? [])
+  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && (step3Included[p.id] ?? false))
+  const includedProcs = processes.filter(p => step3Included[p.id] ?? false)
+  const allTasks = includedProcs.flatMap(p => tasks[p.id] ?? [])
 
   return (
     <div className="flex flex-col gap-6">
@@ -305,7 +306,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
           <Spinner />
           <p className="text-sm font-medium text-[#10B981]">Lastar prosessar...</p>
         </div>
-      ) : processes.length === 0 ? (
+      ) : includedProcs.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400 text-sm">
           Ingen inkluderte prosessar funne. Gå tilbake til steg 3 og merk prosessar som inkludert.
         </div>
@@ -354,19 +355,18 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
             <div className="flex flex-col gap-2">
               {activeProcs.map(process => {
                 const isOpen = openId === process.id
-                const isFromStep3 = step3Included[process.id] ?? false
                 const processTasks = tasks[process.id] ?? []
 
                 return (
                   <div
                     key={process.id}
                     className="rounded-xl overflow-hidden"
-                    style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0', opacity: isFromStep3 ? 1 : 0.4 }}
+                    style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0' }}
                   >
                     {/* Accordion-header */}
                     <button
-                      onClick={() => { if (!isFromStep3) return; setOpenId(isOpen ? null : process.id) }}
-                      className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors${!isFromStep3 ? ' cursor-not-allowed' : ''}`}
+                      onClick={() => setOpenId(isOpen ? null : process.id)}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
                       style={{ background: isOpen ? '#1E293B' : '#FAFBFC', color: isOpen ? '#F8FAFC' : '#1E293B' }}
                     >
                       <span className="flex items-center gap-2 min-w-0">
@@ -540,7 +540,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {processes.map(p => {
+                    {includedProcs.map(p => {
                       const ptasks = tasks[p.id] ?? []
                       return ptasks.map((task, ti) => {
                         const sc = scoreStyle(task.automation, task.improvement)
