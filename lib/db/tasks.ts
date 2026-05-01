@@ -11,3 +11,58 @@ export async function getTasksByProcess(processId: string): Promise<ServerAction
   if (error) return { success: false, error: error.message }
   return { success: true, data: data as Task[] }
 }
+
+export async function getTasksByAnalysis(analysisId: string): Promise<ServerActionResult<Task[]>> {
+  const supabase = createSupabaseServerClient()
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*, processes!inner(analysis_id)')
+    .eq('processes.analysis_id', analysisId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as Task[] }
+}
+
+export async function saveTasks(
+  processId: string,
+  tasks: { name: string; automation: string; potential: string; tech: string }[]
+): Promise<ServerActionResult<Task[]>> {
+  const supabase = createSupabaseServerClient()
+
+  const { error: deleteError } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('process_id', processId)
+
+  if (deleteError) return { success: false, error: deleteError.message }
+  if (tasks.length === 0) return { success: true, data: [] }
+
+  const rows = tasks.map(t => ({
+    process_id: processId,
+    name: t.name,
+    automation: t.automation,
+    potential: t.potential,
+    tech: t.tech,
+  }))
+
+  const { data, error } = await supabase.from('tasks').insert(rows).select()
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as Task[] }
+}
+
+export async function deleteTask(taskId: string): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase.from('tasks').delete().eq('id', taskId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function updateTask(
+  taskId: string,
+  fields: Partial<{ name: string; automation: string; potential: string; tech: string }>
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase.from('tasks').update(fields).eq('id', taskId)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}

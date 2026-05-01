@@ -3,7 +3,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { saveVcSteps } from '@/lib/db/vc_steps'
 import { getProcessesByVcStep, saveProcesses, saveWeights, updateProcessDesc, saveBxtData, saveProcessIncluded } from '@/lib/db/processes'
-import type { Process, ServerActionResult } from '@/types'
+import { getTasksByProcess, saveTasks, deleteTask, updateTask } from '@/lib/db/tasks'
+import type { Process, Task, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
   analyseId: string,
@@ -231,4 +232,64 @@ export async function saveWeightsAction(
   }
 
   return saveWeights(analyseId, weights)
+}
+
+export async function getTasksByProcessAction(
+  processId: string
+): Promise<ServerActionResult<Task[]>> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  return getTasksByProcess(processId)
+}
+
+export async function saveTasksAction(
+  processId: string,
+  tasks: { name: string; automation: string; potential: string; tech: string }[]
+): Promise<ServerActionResult<Task[]>> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+
+  const { data: process } = await supabase
+    .from('processes')
+    .select('analysis_id')
+    .eq('id', processId)
+    .single()
+  if (!process) return { success: false, error: 'Prosess ikkje funnen' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  const { data: analyse } = await supabase
+    .from('analyses')
+    .select('company_id')
+    .eq('id', process.analysis_id)
+    .single()
+
+  if (!analyse || analyse.company_id !== profile?.company_id) {
+    return { success: false, error: 'Ingen tilgang' }
+  }
+
+  return saveTasks(processId, tasks)
+}
+
+export async function deleteTaskAction(taskId: string): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  return deleteTask(taskId)
+}
+
+export async function updateTaskAction(
+  taskId: string,
+  fields: Partial<{ name: string; automation: string; potential: string; tech: string }>
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  return updateTask(taskId, fields)
 }

@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Step1Verdikjede } from '@/components/wizard/Step1Verdikjede'
 import { Step2Prosessscoring } from '@/components/wizard/Step2Prosessscoring'
 import { Step3BXT } from '@/components/wizard/Step3BXT'
+import { Step4Oppgaver } from '@/components/wizard/Step4Oppgaver'
 import { WizardSteps } from '@/components/wizard/WizardSteps'
 import type { VcStep } from '@/types'
 
@@ -24,6 +25,7 @@ export default async function StegPage({ params }: Props) {
 
   const stegNr = parseInt(stegParam)
   if (isNaN(stegNr) || stegNr < 1 || stegNr > 5) redirect(`/analyse/${id}/steg/1`)
+
 
   const result = await getAnalysisById(id)
   if (!result.success || !result.data) redirect('/dashboard')
@@ -72,6 +74,24 @@ export default async function StegPage({ params }: Props) {
           <WizardSteps stegNr={stegNr} />
         </div>
         <Step3BXT
+          key={Date.now()}
+          analyseId={id}
+          analysisTitle={analyse.title}
+          vcSteps={vcSteps}
+        />
+      </div>
+    )
+  } else if (stegNr === 4) {
+    const vcResult = await getVcStepsByAnalysis(id)
+    const vcSteps: VcStep[] = vcResult.data ?? []
+
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-500">{analyse.title}</p>
+          <WizardSteps stegNr={stegNr} />
+        </div>
+        <Step4Oppgaver
           key={Date.now()}
           analyseId={id}
           analysisTitle={analyse.title}
