@@ -288,7 +288,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
     .filter((g): g is { vs: VcStep; procs: Process[] } => g !== null)
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && (step3Included[p.id] ?? false))
-  const includedProcs = processes.filter(p => step3Included[p.id] ?? false)
+  const includedProcs = processes.filter(p => p.vc_step_id === activeVcId)
   const allTasks = includedProcs.flatMap(p => tasks[p.id] ?? [])
 
   return (
@@ -503,7 +503,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                 <div>
                   <h3 className="text-base font-bold text-[#1E293B]">Oppsummering</h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Alle oppgåver på tvers av prosessar ({allTasks.length} totalt)
+                    Alle oppgåver for aktivt verdikjedesteg ({allTasks.length} totalt)
                   </p>
                 </div>
               </div>
