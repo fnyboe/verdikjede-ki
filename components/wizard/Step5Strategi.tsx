@@ -108,13 +108,6 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
 
   const strategyKey = vcControl && techBreadth ? getStrategyKey(vcControl, techBreadth) : null
 
-  const matrixEntries: Array<{ key: string; vc: VcControl; tech: TechBreadth }> = [
-    { key: 'collaborative', vc: 'low',  tech: 'many' },
-    { key: 'platform',      vc: 'high', tech: 'many' },
-    { key: 'focused',       vc: 'low',  tech: 'few'  },
-    { key: 'vertical',      vc: 'high', tech: 'few'  },
-  ]
-
   return (
     <div className="flex flex-col gap-6">
 
