@@ -244,11 +244,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
     setAiGenerating(false)
   }
 
-  async function handleRegenerateAll() {
-    if (aiGenerating || processes.length === 0) return
-    await generateTasks(processes.filter(p => step3Included[p.id] ?? false))
-  }
-
   function handleUpdateTaskLocal(
     taskId: string,
     processId: string,
@@ -318,21 +313,12 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         <>
           {/* Del A – Oppgåver per prosess */}
           <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
-                <div>
-                  <h3 className="text-base font-bold text-[#1E293B]">Oppgåver per prosess</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">KI-genererte oppgåveforslag. Rediger eller slett etter behov.</p>
-                </div>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
+              <div>
+                <h3 className="text-base font-bold text-[#1E293B]">Oppgåver per prosess</h3>
+                <p className="text-xs text-slate-500 mt-0.5">KI-genererte oppgåveforslag. Rediger eller slett etter behov.</p>
               </div>
-              <Button
-                onClick={handleRegenerateAll}
-                disabled={aiGenerating}
-                className="bg-[#1E293B] hover:bg-slate-700 text-white text-xs disabled:opacity-50 shrink-0"
-              >
-                {aiGenerating ? 'Genererer...' : 'Regenerer alle'}
-              </Button>
             </div>
 
             {/* Tab-navigasjon */}
