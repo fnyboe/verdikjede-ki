@@ -89,17 +89,23 @@ function ScoreSelect({
 
 function ThTooltip({ label, tip }: { label: string; tip: string }) {
   const [show, setShow] = useState(false)
+  const lines = tip.split(', ').filter(l => l.trim().length > 0)
   return (
     <span
-      className="relative cursor-help inline-block"
+      className="relative cursor-help"
       onMouseEnter={() => setShow(true)}
       onMouseLeave={() => setShow(false)}
     >
       {label}
       {show && (
-        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none" style={{ width: '240px' }}>
-          <span className="block bg-white rounded-lg p-2 border border-slate-200 shadow-md text-xs text-slate-600 font-normal text-left leading-snug">
-            {tip}
+        <span className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none" style={{ width: '280px' }}>
+          <span className="block bg-white rounded-lg p-3 text-left border border-slate-200 shadow-md">
+            <span className="block text-xs font-bold text-[#1E293B] mb-2">{label}:</span>
+            <span className="flex flex-col gap-1">
+              {lines.map((line, i) => (
+                <span key={i} className="block text-xs text-slate-500 leading-snug">{line}</span>
+              ))}
+            </span>
           </span>
         </span>
       )}
@@ -118,7 +124,7 @@ function InfoTooltip({ automationReason, improvementReason }: { automationReason
     >
       <span className="text-slate-400 hover:text-slate-600 cursor-help text-[11px] select-none">ℹ</span>
       {show && (
-        <span className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none" style={{ width: '260px' }}>
+        <span className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none" style={{ width: '320px' }}>
           <span className="block bg-white rounded-lg p-3 border border-slate-200 shadow-md text-xs text-left leading-snug">
             {automationReason && (
               <span className="block mb-2">
@@ -502,7 +508,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                   </p>
                 </div>
               </div>
-              <div className="overflow-x-auto">
+              <div>
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="border-b-2 border-slate-200">
