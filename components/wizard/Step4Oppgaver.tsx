@@ -107,6 +107,38 @@ function ThTooltip({ label, tip }: { label: string; tip: string }) {
   )
 }
 
+function InfoTooltip({ automationReason, improvementReason }: { automationReason: string; improvementReason: string }) {
+  const [show, setShow] = useState(false)
+  if (!automationReason && !improvementReason) return null
+  return (
+    <span
+      className="relative inline-block align-middle ml-1 shrink-0"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="text-slate-400 hover:text-slate-600 cursor-help text-[11px] select-none">ℹ</span>
+      {show && (
+        <span className="absolute bottom-full left-0 mb-2 z-50 pointer-events-none" style={{ width: '260px' }}>
+          <span className="block bg-white rounded-lg p-3 border border-slate-200 shadow-md text-xs text-left leading-snug">
+            {automationReason && (
+              <span className="block mb-2">
+                <span className="font-semibold text-slate-700 block mb-0.5">Automatisering</span>
+                <span className="text-slate-500">{automationReason}</span>
+              </span>
+            )}
+            {improvementReason && (
+              <span className="block">
+                <span className="font-semibold text-slate-700 block mb-0.5">Forbedring</span>
+                <span className="text-slate-500">{improvementReason}</span>
+              </span>
+            )}
+          </span>
+        </span>
+      )}
+    </span>
+  )
+}
+
 export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const router = useRouter()
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
@@ -503,13 +535,19 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                               {ti === 0 ? <span className="font-semibold text-[#1E293B]">{p.name}</span> : null}
                             </td>
                             <td className="py-1.5 pr-4 align-middle">
-                              <input
-                                type="text"
-                                value={task.name}
-                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'name', e.target.value)}
-                                onBlur={() => handleSaveTask(task.id, p.id)}
-                                className="w-full font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
-                              />
+                              <span className="flex items-center gap-1">
+                                <input
+                                  type="text"
+                                  value={task.name}
+                                  onChange={e => handleUpdateTaskLocal(task.id, p.id, 'name', e.target.value)}
+                                  onBlur={() => handleSaveTask(task.id, p.id)}
+                                  className="flex-1 min-w-0 font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
+                                />
+                                <InfoTooltip
+                                  automationReason={task.automation_reason}
+                                  improvementReason={task.improvement_reason}
+                                />
+                              </span>
                             </td>
                             <td className="py-1.5 pr-3 align-middle text-center">
                               <select
