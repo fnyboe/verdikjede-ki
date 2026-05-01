@@ -293,7 +293,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   return (
     <div className="flex flex-col gap-6">
       {aiGenerating && (
-        <div className="bg-white rounded-xl border border-[#10B981] p-4 flex items-center gap-3">
+        <div className="bg-white rounded-xl border border-[#10B981] p-4 flex items-center gap-3 mb-4">
           <Spinner />
           <p className="text-sm font-medium text-[#10B981]">Genererer oppgåveforslag...</p>
         </div>
@@ -511,7 +511,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                   <thead>
                     <tr className="border-b-2 border-slate-200">
                       <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[140px]">Prosess</th>
-                      <th className="text-left py-2 pr-4 font-semibold text-slate-600">Oppgåve</th>
+                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[200px]">Oppgåve</th>
                       <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-28">
                         <ThTooltip
                           label="Automatisering"
@@ -538,14 +538,14 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                             <td className="py-1.5 pr-4 align-middle">
                               {ti === 0 ? <span className="font-semibold text-[#1E293B]">{p.name}</span> : null}
                             </td>
-                            <td className="py-1.5 pr-4 align-middle">
-                              <span className="flex items-center gap-1">
+                            <td className="py-1.5 pr-4 align-middle max-w-[200px]">
+                              <span className="flex items-center gap-1 min-w-0">
                                 <input
                                   type="text"
                                   value={task.name}
                                   onChange={e => handleUpdateTaskLocal(task.id, p.id, 'name', e.target.value)}
                                   onBlur={() => handleSaveTask(task.id, p.id)}
-                                  className="flex-1 min-w-0 font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
+                                  className="flex-1 min-w-0 w-0 font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white truncate"
                                 />
                                 <InfoTooltip
                                   automationReason={task.automation_reason}
