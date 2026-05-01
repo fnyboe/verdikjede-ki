@@ -311,6 +311,12 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
         >
           ← Førre steg
         </Button>
+        <Button
+          onClick={() => router.push(`/analyse/${analyseId}/rapport`)}
+          className="bg-[#10B981] hover:bg-[#059669] text-white"
+        >
+          Generer sluttrapport →
+        </Button>
       </div>
     </div>
   )
