@@ -45,8 +45,10 @@ export interface Task {
   id: string
   process_id: string
   name: string
-  automation: string
-  potential: string
+  automation: number
+  automation_reason: string
+  improvement: number
+  improvement_reason: string
   tech: string
   created_at: string
 }

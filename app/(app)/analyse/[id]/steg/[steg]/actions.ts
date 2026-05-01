@@ -245,7 +245,7 @@ export async function getTasksByProcessAction(
 
 export async function saveTasksAction(
   processId: string,
-  tasks: { name: string; automation: string; potential: string; tech: string }[]
+  tasks: { name: string; automation: number; automation_reason: string; improvement: number; improvement_reason: string; tech: string }[]
 ): Promise<ServerActionResult<Task[]>> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -286,7 +286,7 @@ export async function deleteTaskAction(taskId: string): Promise<ServerActionResu
 
 export async function updateTaskAction(
   taskId: string,
-  fields: Partial<{ name: string; automation: string; potential: string; tech: string }>
+  fields: Partial<{ name: string; automation: number; automation_reason: string; improvement: number; improvement_reason: string; tech: string }>
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()

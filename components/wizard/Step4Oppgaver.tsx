@@ -18,6 +18,15 @@ interface Props {
   vcSteps: VcStep[]
 }
 
+type TaskInput = {
+  name: string
+  automation: number
+  automation_reason: string
+  improvement: number
+  improvement_reason: string
+  tech: string
+}
+
 function Spinner({ className }: { className?: string }) {
   return (
     <svg
@@ -32,6 +41,52 @@ function Spinner({ className }: { className?: string }) {
   )
 }
 
+function scoreStyle(a: number, i: number) {
+  const s = a * i
+  if (s >= 16) return { bg: '#D1FAE5', text: '#065F46', s }
+  if (s >= 9)  return { bg: '#FEF3C7', text: '#92400E', s }
+  return { bg: '#FEE2E2', text: '#991B1B', s }
+}
+
+function ScoreSelect({
+  label, tip, value,
+  onChange, onBlur,
+}: {
+  label: string
+  tip: string
+  value: number
+  onChange: (v: number) => void
+  onBlur: () => void
+}) {
+  const [show, setShow] = useState(false)
+  return (
+    <div className="relative shrink-0">
+      <span
+        className="text-[10px] text-slate-500 block text-center leading-none mb-0.5 cursor-help select-none"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        {label}
+      </span>
+      <select
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        onBlur={onBlur}
+        className="w-12 py-1 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer"
+      >
+        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+      </select>
+      {show && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none" style={{ width: '200px' }}>
+          <div className="bg-white rounded-lg p-2 border border-slate-200 shadow-md text-xs text-slate-600 text-left whitespace-pre-line">
+            {tip}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const router = useRouter()
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
@@ -39,6 +94,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const [processes, setProcesses] = useState<Process[]>([])
   const [tasks, setTasks] = useState<Record<string, Task[]>>({})
   const [openId, setOpenId] = useState<string | null>(null)
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [activeVcId, setActiveVcId] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -94,7 +150,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         console.error('[steg4] AI-svar ugyldig for', p.name, json)
         return null
       }
-      const aiTasks = json.tasks as Array<{ name: string; automation: string; potential: string; tech: string }>
+      const aiTasks = json.tasks as TaskInput[]
       const result = await saveTasksAction(p.id, aiTasks)
       if (!result.success || !result.data) {
         console.error('[steg4] saveTasksAction feila for', p.name, result.error)
@@ -126,8 +182,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   function handleUpdateTaskLocal(
     taskId: string,
     processId: string,
-    field: keyof Pick<Task, 'name' | 'automation' | 'potential' | 'tech'>,
-    value: string
+    field: keyof Pick<Task, 'name' | 'automation' | 'automation_reason' | 'improvement' | 'improvement_reason' | 'tech'>,
+    value: string | number
   ) {
     setTasks(prev => ({
       ...prev,
@@ -142,7 +198,9 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
     await updateTaskAction(taskId, {
       name: task.name,
       automation: task.automation,
-      potential: task.potential,
+      automation_reason: task.automation_reason,
+      improvement: task.improvement,
+      improvement_reason: task.improvement_reason,
       tech: task.tech,
     })
     setSavingTask(prev => ({ ...prev, [taskId]: false }))
@@ -169,7 +227,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Global AI-generering-banner */}
       {aiGenerating && (
         <div className="bg-white rounded-xl border border-[#10B981] p-4 flex items-center gap-3">
           <Spinner />
@@ -239,7 +296,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                     className="rounded-xl overflow-hidden"
                     style={{ border: isOpen ? '2px solid #1E293B' : '2px solid #E2E8F0' }}
                   >
-                    {/* Header */}
+                    {/* Accordion-header */}
                     <button
                       onClick={() => setOpenId(isOpen ? null : process.id)}
                       className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
@@ -270,69 +327,108 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                       </span>
                     </button>
 
-                    {/* Body */}
+                    {/* Accordion-body */}
                     {isOpen && (
-                      <div className="bg-white px-5 py-4 flex flex-col gap-3">
+                      <div className="bg-white px-4 py-3 flex flex-col gap-2">
                         {processTasks.length === 0 ? (
                           <p className="text-sm text-slate-400 text-center py-4">
                             {aiGenerating ? 'Genererer oppgåver...' : 'Ingen oppgåver enno.'}
                           </p>
                         ) : (
-                          processTasks.map(task => (
-                            <div
-                              key={task.id}
-                              className="rounded-lg border border-slate-200 p-3 flex flex-col gap-2 bg-slate-50"
-                            >
-                              <div className="flex items-start gap-2">
-                                <input
-                                  type="text"
-                                  value={task.name}
-                                  onChange={e => handleUpdateTaskLocal(task.id, process.id, 'name', e.target.value)}
-                                  onBlur={() => handleSaveTask(task.id, process.id)}
-                                  className="flex-1 text-sm font-bold text-[#1E293B] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#10B981]"
-                                />
-                                <button
-                                  onClick={() => handleDeleteTask(task.id, process.id)}
-                                  className="shrink-0 text-slate-400 hover:text-red-500 transition-colors text-xs px-1.5 py-1 rounded hover:bg-red-50 mt-0.5"
-                                  title="Slett oppgåve"
-                                >
-                                  ✕
-                                </button>
-                              </div>
+                          processTasks.map(task => {
+                            const isExpanded = expandedTaskId === task.id
+                            const sc = scoreStyle(task.automation, task.improvement)
+                            return (
                               <div
-                                className="grid gap-x-3 gap-y-1.5 items-start"
-                                style={{ gridTemplateColumns: '110px 1fr' }}
+                                key={task.id}
+                                className="rounded-lg border border-slate-200 overflow-hidden"
+                                style={{ background: isExpanded ? '#fff' : '#FAFBFC' }}
                               >
-                                <span className="text-xs text-slate-500 font-semibold pt-1.5">Automatisering</span>
-                                <textarea
-                                  rows={2}
-                                  value={task.automation}
-                                  onChange={e => handleUpdateTaskLocal(task.id, process.id, 'automation', e.target.value)}
-                                  onBlur={() => handleSaveTask(task.id, process.id)}
-                                  className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-white w-full leading-relaxed"
-                                />
-                                <span className="text-xs text-slate-500 font-semibold pt-1.5">Potensial</span>
-                                <textarea
-                                  rows={2}
-                                  value={task.potential}
-                                  onChange={e => handleUpdateTaskLocal(task.id, process.id, 'potential', e.target.value)}
-                                  onBlur={() => handleSaveTask(task.id, process.id)}
-                                  className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-white w-full leading-relaxed"
-                                />
-                                <span className="text-xs text-slate-500 font-semibold pt-1.5">Teknologi</span>
-                                <input
-                                  type="text"
-                                  value={task.tech}
-                                  onChange={e => handleUpdateTaskLocal(task.id, process.id, 'tech', e.target.value)}
-                                  onBlur={() => handleSaveTask(task.id, process.id)}
-                                  className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white w-full"
-                                />
+                                {/* Nivå 1 – alltid synleg */}
+                                <div className="flex items-center gap-2 px-3 py-2">
+                                  <input
+                                    type="text"
+                                    value={task.name}
+                                    onChange={e => handleUpdateTaskLocal(task.id, process.id, 'name', e.target.value)}
+                                    onBlur={() => handleSaveTask(task.id, process.id)}
+                                    className="flex-1 min-w-0 text-sm font-semibold text-[#1E293B] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#10B981]"
+                                  />
+                                  <ScoreSelect
+                                    label="Auto"
+                                    tip={'Automatiseringsgrad\n1 = minimalt kan automatiserast\n5 = fullt automatiserbart'}
+                                    value={task.automation}
+                                    onChange={v => handleUpdateTaskLocal(task.id, process.id, 'automation', v)}
+                                    onBlur={() => handleSaveTask(task.id, process.id)}
+                                  />
+                                  <ScoreSelect
+                                    label="Forb."
+                                    tip={'Forbetringspotensial\n1 = liten forbetring\n5 = svært stor forbetring'}
+                                    value={task.improvement}
+                                    onChange={v => handleUpdateTaskLocal(task.id, process.id, 'improvement', v)}
+                                    onBlur={() => handleSaveTask(task.id, process.id)}
+                                  />
+                                  <span
+                                    className="shrink-0 w-8 text-center py-1 rounded text-xs font-bold"
+                                    style={{ background: sc.bg, color: sc.text }}
+                                  >
+                                    {sc.s}
+                                  </span>
+                                  <button
+                                    onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                                    className="shrink-0 text-slate-400 hover:text-[#1E293B] transition-colors text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-slate-200"
+                                    title={isExpanded ? 'Skjul detaljar' : 'Vis detaljar'}
+                                  >
+                                    {isExpanded ? '▲' : '▼'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTask(task.id, process.id)}
+                                    className="shrink-0 text-slate-400 hover:text-red-500 transition-colors text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                                    title="Slett oppgåve"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+
+                                {/* Nivå 2 – utvida detaljar */}
+                                {isExpanded && (
+                                  <div className="bg-white border-t border-slate-100 px-3 py-3 flex flex-col gap-2">
+                                    <div
+                                      className="grid gap-x-3 gap-y-1.5 items-start"
+                                      style={{ gridTemplateColumns: '140px 1fr' }}
+                                    >
+                                      <span className="text-xs text-slate-500 font-semibold pt-1.5">Automatisering – kvifor</span>
+                                      <textarea
+                                        rows={2}
+                                        value={task.automation_reason}
+                                        onChange={e => handleUpdateTaskLocal(task.id, process.id, 'automation_reason', e.target.value)}
+                                        onBlur={() => handleSaveTask(task.id, process.id)}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed"
+                                      />
+                                      <span className="text-xs text-slate-500 font-semibold pt-1.5">Forbetring – kvifor</span>
+                                      <textarea
+                                        rows={2}
+                                        value={task.improvement_reason}
+                                        onChange={e => handleUpdateTaskLocal(task.id, process.id, 'improvement_reason', e.target.value)}
+                                        onBlur={() => handleSaveTask(task.id, process.id)}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed"
+                                      />
+                                      <span className="text-xs text-slate-500 font-semibold pt-1.5">Teknologi</span>
+                                      <input
+                                        type="text"
+                                        value={task.tech}
+                                        onChange={e => handleUpdateTaskLocal(task.id, process.id, 'tech', e.target.value)}
+                                        onBlur={() => handleSaveTask(task.id, process.id)}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full"
+                                      />
+                                    </div>
+                                    {savingTask[task.id] && (
+                                      <span className="text-[10px] text-slate-400 self-end">Lagrar...</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              {savingTask[task.id] && (
-                                <span className="text-[10px] text-slate-400 self-end">Lagrar...</span>
-                              )}
-                            </div>
-                          ))
+                            )
+                          })
                         )}
                       </div>
                     )}
@@ -358,29 +454,34 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="border-b-2 border-slate-200">
-                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[150px]">Prosess</th>
-                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[180px]">Oppgåve</th>
-                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 hidden md:table-cell">Automatisering</th>
-                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 hidden lg:table-cell">Potensial</th>
+                      <th className="text-left py-2 pr-4 font-semibold text-slate-600 w-[140px]">Prosess</th>
+                      <th className="text-left py-2 pr-4 font-semibold text-slate-600">Oppgåve</th>
+                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-12">Auto</th>
+                      <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-12">Forb.</th>
+                      <th className="text-center py-2 pr-4 font-semibold text-slate-600 w-12">Score</th>
                       <th className="text-left py-2 font-semibold text-slate-600 hidden lg:table-cell">Teknologi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {processes.map(p => {
                       const ptasks = tasks[p.id] ?? []
-                      return ptasks.map((task, ti) => (
-                        <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
-                          <td className="py-2 pr-4 align-top">
-                            {ti === 0 ? (
-                              <span className="font-semibold text-[#1E293B]">{p.name}</span>
-                            ) : null}
-                          </td>
-                          <td className="py-2 pr-4 align-top font-semibold text-[#1E293B]">{task.name}</td>
-                          <td className="py-2 pr-4 align-top text-slate-600 hidden md:table-cell">{task.automation}</td>
-                          <td className="py-2 pr-4 align-top text-slate-600 hidden lg:table-cell">{task.potential}</td>
-                          <td className="py-2 align-top text-slate-500 hidden lg:table-cell">{task.tech}</td>
-                        </tr>
-                      ))
+                      return ptasks.map((task, ti) => {
+                        const sc = scoreStyle(task.automation, task.improvement)
+                        return (
+                          <tr key={task.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-2 pr-4 align-middle">
+                              {ti === 0 ? <span className="font-semibold text-[#1E293B]">{p.name}</span> : null}
+                            </td>
+                            <td className="py-2 pr-4 align-middle font-semibold text-[#1E293B]">{task.name}</td>
+                            <td className="py-2 pr-3 align-middle text-center text-slate-600">{task.automation}</td>
+                            <td className="py-2 pr-3 align-middle text-center text-slate-600">{task.improvement}</td>
+                            <td className="py-2 pr-4 align-middle text-center">
+                              <span className="inline-block px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: sc.bg, color: sc.text }}>{sc.s}</span>
+                            </td>
+                            <td className="py-2 align-middle text-slate-500 hidden lg:table-cell">{task.tech}</td>
+                          </tr>
+                        )
+                      })
                     })}
                   </tbody>
                 </table>

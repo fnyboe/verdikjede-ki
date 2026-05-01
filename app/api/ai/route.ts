@@ -356,12 +356,14 @@ async function handleSteg4(body: Record<string, unknown>) {
     '',
     'Kvar oppgåve skal ha:',
     '- name: kort oppgåvenamn (3–6 ord)',
-    '- automation: kva konkret som kan automatiserast (1–2 setningar)',
-    '- potential: kva verdi eller gevinst som kan hentast ut (1–2 setningar)',
+    '- automation: heiltal 1–5 for kor mykje av oppgåva kan automatiserast (1=minimalt, 5=fullt)',
+    '- automation_reason: kort grunngjeving for automation-score (1–2 setningar)',
+    '- improvement: heiltal 1–5 for kor stor forbetring/gevinst dette gir (1=liten, 5=svært stor)',
+    '- improvement_reason: kort grunngjeving for improvement-score (1–2 setningar)',
     '- tech: kva teknologi eller verktøy (kommaseparert liste)',
     '',
     'Returner KUN gyldig JSON utan forklaring eller markdown:',
-    '{ "tasks": [{"name":"...","automation":"...","potential":"...","tech":"..."}, ...] }',
+    '{ "tasks": [{"name":"...","automation":4,"automation_reason":"...","improvement":3,"improvement_reason":"...","tech":"..."}, ...] }',
   ].filter(Boolean).join('\n')
 
   const response = await client.messages.create({
@@ -381,11 +383,27 @@ async function handleSteg4(body: Record<string, unknown>) {
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as {
-    tasks: Array<{ name: string; automation: string; potential: string; tech: string }>
+    tasks: Array<{
+      name: string
+      automation: number
+      automation_reason: string
+      improvement: number
+      improvement_reason: string
+      tech: string
+    }>
   }
   if (!Array.isArray(parsed.tasks)) {
     return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
   }
 
-  return NextResponse.json({ tasks: parsed.tasks })
+  const validatedTasks = parsed.tasks.map(t => ({
+    name: String(t.name ?? ''),
+    automation: Math.min(5, Math.max(1, Math.round(Number(t.automation) || 3))),
+    automation_reason: String(t.automation_reason ?? ''),
+    improvement: Math.min(5, Math.max(1, Math.round(Number(t.improvement) || 3))),
+    improvement_reason: String(t.improvement_reason ?? ''),
+    tech: String(t.tech ?? ''),
+  }))
+
+  return NextResponse.json({ tasks: validatedTasks })
 }

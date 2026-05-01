@@ -1,6 +1,15 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { Task, ServerActionResult } from '@/types'
 
+type TaskInput = {
+  name: string
+  automation: number
+  automation_reason: string
+  improvement: number
+  improvement_reason: string
+  tech: string
+}
+
 export async function getTasksByProcess(processId: string): Promise<ServerActionResult<Task[]>> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
@@ -25,7 +34,7 @@ export async function getTasksByAnalysis(analysisId: string): Promise<ServerActi
 
 export async function saveTasks(
   processId: string,
-  tasks: { name: string; automation: string; potential: string; tech: string }[]
+  tasks: TaskInput[]
 ): Promise<ServerActionResult<Task[]>> {
   const supabase = createSupabaseServerClient()
 
@@ -41,7 +50,9 @@ export async function saveTasks(
     process_id: processId,
     name: t.name,
     automation: t.automation,
-    potential: t.potential,
+    automation_reason: t.automation_reason,
+    improvement: t.improvement,
+    improvement_reason: t.improvement_reason,
     tech: t.tech,
   }))
 
@@ -59,7 +70,7 @@ export async function deleteTask(taskId: string): Promise<ServerActionResult> {
 
 export async function updateTask(
   taskId: string,
-  fields: Partial<{ name: string; automation: string; potential: string; tech: string }>
+  fields: Partial<TaskInput & { name: string }>
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { error } = await supabase.from('tasks').update(fields).eq('id', taskId)
