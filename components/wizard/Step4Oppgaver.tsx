@@ -187,8 +187,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
       if (firstVc) setActiveVcId(firstVc.id)
 
-      setIsLoadingFromDB(false)
-
       const needsTasks = allProcs.filter(p => (s3inc[p.id] ?? false) && (taskMap[p.id] ?? []).length === 0)
       if (needsTasks.length > 0) {
         await generateTasks(needsTasks)
@@ -196,6 +194,12 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (Object.keys(step3Included).length > 0) {
+      setIsLoadingFromDB(false)
+    }
+  }, [step3Included])
 
   async function generateTasksForProcess(p: Process): Promise<Task[] | null> {
     try {
