@@ -171,6 +171,10 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
           }))
         }
       }
+      const firstVc =
+        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id && s3inc[p.id])) ??
+        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
+      if (firstVc) setActiveVcId(firstVc.id)
       setProcesses(allProcs)
       setStep3Included(s3inc)
 
@@ -181,11 +185,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         taskMap[allProcs[i].id] = r.success && r.data ? r.data : []
       }
       setTasks(taskMap)
-
-      const firstVc =
-        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id && s3inc[p.id])) ??
-        vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
-      if (firstVc) setActiveVcId(firstVc.id)
 
       const needsTasks = allProcs.filter(p => (s3inc[p.id] ?? false) && (taskMap[p.id] ?? []).length === 0)
       if (needsTasks.length > 0) {
