@@ -69,90 +69,58 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
       const needsTasks = allProcs.filter(p => (taskMap[p.id] ?? []).length === 0)
       if (needsTasks.length > 0) {
-        await generateTasks(needsTasks, taskMap)
+        await generateTasks(needsTasks)
       }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function generateTasks(
-    toGenerate: Process[],
-    baseTaskMap: Record<string, Task[]>
-  ) {
-    setAiGenerating(true)
+  async function generateTasksForProcess(p: Process): Promise<Task[] | null> {
     try {
-      const payload = toGenerate.map(p => ({
-        processId: p.id,
-        processName: p.name,
-        problemDesc: p.problem_desc ?? '',
-        usecaseDesc: p.usecase_desc ?? '',
-        vcStepName: vcStepNames[p.vc_step_id ?? ''] ?? '',
-      }))
-
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'steg4', processes: payload, analysisTitle }),
+        body: JSON.stringify({
+          action: 'steg4',
+          processName: p.name,
+          vcStepName: vcStepNames[p.vc_step_id ?? ''] ?? '',
+          analysisTitle,
+          processProblem: p.problem_desc ?? '',
+          processUsecase: p.usecase_desc ?? '',
+        }),
       })
       const json = await res.json() as Record<string, unknown>
-      if (!res.ok || !json.tasks || typeof json.tasks !== 'object') return
-
-      const aiTasks = json.tasks as Record<string, Array<{ name: string; automation: string; potential: string; tech: string }>>
-      const newTaskMap = { ...baseTaskMap }
-
-      for (const p of toGenerate) {
-        const ptasks = aiTasks[p.id]
-        if (!Array.isArray(ptasks) || ptasks.length === 0) continue
-        const result = await saveTasksAction(p.id, ptasks)
-        if (result.success && result.data) {
-          newTaskMap[p.id] = result.data
-        }
+      if (!res.ok || !Array.isArray(json.tasks)) {
+        console.error('[steg4] AI-svar ugyldig for', p.name, json)
+        return null
       }
-      setTasks(newTaskMap)
-    } catch {
-      // AI error non-critical
-    } finally {
-      setAiGenerating(false)
+      const aiTasks = json.tasks as Array<{ name: string; automation: string; potential: string; tech: string }>
+      const result = await saveTasksAction(p.id, aiTasks)
+      if (!result.success || !result.data) {
+        console.error('[steg4] saveTasksAction feila for', p.name, result.error)
+        return null
+      }
+      return result.data
+    } catch (err) {
+      console.error('[steg4] Uhandtert feil for', p.name, err)
+      return null
     }
+  }
+
+  async function generateTasks(toGenerate: Process[]) {
+    setAiGenerating(true)
+    for (const p of toGenerate) {
+      const saved = await generateTasksForProcess(p)
+      if (saved) {
+        setTasks(prev => ({ ...prev, [p.id]: saved }))
+      }
+    }
+    setAiGenerating(false)
   }
 
   async function handleRegenerateAll() {
     if (aiGenerating || processes.length === 0) return
-    setAiGenerating(true)
-    try {
-      const payload = processes.map(p => ({
-        processId: p.id,
-        processName: p.name,
-        problemDesc: p.problem_desc ?? '',
-        usecaseDesc: p.usecase_desc ?? '',
-        vcStepName: vcStepNames[p.vc_step_id ?? ''] ?? '',
-      }))
-
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'steg4', processes: payload, analysisTitle }),
-      })
-      const json = await res.json() as Record<string, unknown>
-      if (!res.ok || !json.tasks || typeof json.tasks !== 'object') return
-
-      const aiTasks = json.tasks as Record<string, Array<{ name: string; automation: string; potential: string; tech: string }>>
-      const newTaskMap = { ...tasks }
-
-      for (const p of processes) {
-        const ptasks = aiTasks[p.id]
-        if (!Array.isArray(ptasks) || ptasks.length === 0) continue
-        const result = await saveTasksAction(p.id, ptasks)
-        if (result.success && result.data) {
-          newTaskMap[p.id] = result.data
-        }
-      }
-      setTasks(newTaskMap)
-    } catch {
-      // AI error non-critical
-    } finally {
-      setAiGenerating(false)
-    }
+    await generateTasks(processes)
   }
 
   function handleUpdateTaskLocal(

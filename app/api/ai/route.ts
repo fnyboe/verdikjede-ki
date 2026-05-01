@@ -332,33 +332,27 @@ async function handleSteg2Scores(body: Record<string, unknown>) {
 }
 
 async function handleSteg4(body: Record<string, unknown>) {
-  const { processes } = body as {
-    processes?: Array<{
-      processId: string
-      processName: string
-      problemDesc?: string
-      usecaseDesc?: string
-      vcStepName?: string
-    }>
+  const { processName, vcStepName, analysisTitle, processProblem, processUsecase } = body as {
+    processName?: string
+    vcStepName?: string
+    analysisTitle?: string
+    processProblem?: string
+    processUsecase?: string
   }
 
-  if (!processes?.length) {
-    return NextResponse.json({ error: 'processes er påkravd' }, { status: 400 })
+  if (!processName?.trim()) {
+    return NextResponse.json({ error: 'processName er påkravd' }, { status: 400 })
   }
-
-  const processList = processes
-    .map(p => [
-      `Prosess (ID: ${p.processId}):`,
-      `  Namn: ${p.processName}`,
-      p.vcStepName?.trim() ? `  Verdikjedesteg: ${p.vcStepName}` : '',
-      p.problemDesc?.trim() ? `  Problem: ${p.problemDesc}` : '',
-      p.usecaseDesc?.trim() ? `  KI-idé: ${p.usecaseDesc}` : '',
-    ].filter(Boolean).join('\n'))
-    .join('\n\n')
 
   const promptText = [
     'Du er ein KI-rådgjevar som hjelper norske bedrifter å definere konkrete KI-oppgåver.',
-    'For kvar prosess nedanfor, generer dei 5 mest lovande KI-oppgåvene på norsk.',
+    analysisTitle?.trim() ? `Bedrift/analyse: ${analysisTitle}` : '',
+    vcStepName?.trim() ? `Verdikjedesteg: ${vcStepName}` : '',
+    `Prosess: ${processName}`,
+    processProblem?.trim() ? `Problem: ${processProblem}` : '',
+    processUsecase?.trim() ? `KI-idé: ${processUsecase}` : '',
+    '',
+    'Generer dei 5 mest lovande KI-oppgåvene for denne prosessen på norsk.',
     '',
     'Kvar oppgåve skal ha:',
     '- name: kort oppgåvenamn (3–6 ord)',
@@ -366,18 +360,13 @@ async function handleSteg4(body: Record<string, unknown>) {
     '- potential: kva verdi eller gevinst som kan hentast ut (1–2 setningar)',
     '- tech: kva teknologi eller verktøy (kommaseparert liste)',
     '',
-    'Prosessane:',
-    '',
-    processList,
-    '',
     'Returner KUN gyldig JSON utan forklaring eller markdown:',
-    '{ "tasks": { "PROCESS_ID_1": [{"name":"...","automation":"...","potential":"...","tech":"..."}], "PROCESS_ID_2": [...] } }',
-    'Bruk dei eksakte process-ID-ane som nøklar i "tasks"-objektet.',
-  ].join('\n')
+    '{ "tasks": [{"name":"...","automation":"...","potential":"...","tech":"..."}, ...] }',
+  ].filter(Boolean).join('\n')
 
   const response = await client.messages.create({
     model,
-    max_tokens: 4096,
+    max_tokens: 2048,
     messages: [{ role: 'user', content: promptText }],
   })
 
@@ -392,9 +381,9 @@ async function handleSteg4(body: Record<string, unknown>) {
   }
 
   const parsed = JSON.parse(jsonMatch[0]) as {
-    tasks: Record<string, Array<{ name: string; automation: string; potential: string; tech: string }>>
+    tasks: Array<{ name: string; automation: string; potential: string; tech: string }>
   }
-  if (!parsed.tasks || typeof parsed.tasks !== 'object') {
+  if (!Array.isArray(parsed.tasks)) {
     return NextResponse.json({ error: 'Ugyldig format frå AI' }, { status: 500 })
   }
 
