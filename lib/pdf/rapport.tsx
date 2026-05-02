@@ -441,7 +441,15 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
               </View>
               {procTasks.map((t, i) => (
                 <View key={t.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]} wrap={false}>
-                  <Text style={[s.tableCell, { flex: 3 }]}>{t.name}</Text>
+                  <View style={{ flex: 3 }}>
+                    <Text style={s.tableCell}>{t.name}</Text>
+                    {t.automation_reason ? (
+                      <Text style={{ fontSize: 7, color: C.muted, marginTop: 2 }}>Automatisering: {t.automation_reason}</Text>
+                    ) : null}
+                    {t.improvement_reason ? (
+                      <Text style={{ fontSize: 7, color: C.muted, marginTop: 1 }}>Forbetring: {t.improvement_reason}</Text>
+                    ) : null}
+                  </View>
                   <Text style={[s.tableCell, { flex: 1, textAlign: 'center' }]}>{t.automation}</Text>
                   <Text style={[s.tableCell, { flex: 1, textAlign: 'center' }]}>{t.improvement}</Text>
                   <Text style={[s.tableCell, { flex: 2 }]}>{t.tech}</Text>
@@ -455,6 +463,74 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
       {/* ── PAGE: STEG 5 – STRATEGI OG IMPLEMENTERING ── */}
       <Page size="A4" style={s.page}>
         <SectionHeader badge="5" title="Strategisk tilnærming og forslag til implementering" />
+
+        {/* 2×2 strategimatrise */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={[s.label, { marginBottom: 8 }]}>STRATEGIOVERSIKT</Text>
+          {/* Kolonneoverskrifter */}
+          <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+            <View style={{ width: 52 }} />
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: 7, color: C.muted, fontFamily: 'Helvetica-Bold' }}>Lav kontroll</Text>
+            <Text style={{ flex: 1, textAlign: 'center', fontSize: 7, color: C.muted, fontFamily: 'Helvetica-Bold' }}>Høy kontroll</Text>
+          </View>
+          {/* Rad: Mange teknologiar */}
+          <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+            <View style={{ width: 52, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 7, color: C.muted, fontFamily: 'Helvetica-Bold', textAlign: 'right', paddingRight: 6 }}>Mange tek.</Text>
+            </View>
+            {(['collaborative', 'platform'] as const).map(key => {
+              const st = STRATS[key]
+              const isSelected = stratKey === key
+              return (
+                <View key={key} style={{
+                  flex: 1, marginHorizontal: 3,
+                  borderWidth: isSelected ? 2 : 1,
+                  borderColor: isSelected ? st.color : C.border,
+                  borderRadius: 4, padding: 8,
+                  backgroundColor: isSelected ? st.bg : C.white,
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                    <View style={{ backgroundColor: st.color, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1, marginRight: 4 }}>
+                      <Text style={{ fontSize: 6, color: C.white, fontFamily: 'Helvetica-Bold' }}>{st.sub}</Text>
+                    </View>
+                    {isSelected && <Text style={{ fontSize: 7, color: st.color, fontFamily: 'Helvetica-Bold' }}>✓ Anbefalt</Text>}
+                  </View>
+                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.dark, marginBottom: 3 }}>{st.title}</Text>
+                  <Text style={{ fontSize: 7, color: C.muted, lineHeight: 1.4 }}>{st.desc}</Text>
+                </View>
+              )
+            })}
+          </View>
+          {/* Rad: Få teknologiar */}
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ width: 52, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 7, color: C.muted, fontFamily: 'Helvetica-Bold', textAlign: 'right', paddingRight: 6 }}>Få tek.</Text>
+            </View>
+            {(['focused', 'vertical'] as const).map(key => {
+              const st = STRATS[key]
+              const isSelected = stratKey === key
+              return (
+                <View key={key} style={{
+                  flex: 1, marginHorizontal: 3,
+                  borderWidth: isSelected ? 2 : 1,
+                  borderColor: isSelected ? st.color : C.border,
+                  borderRadius: 4, padding: 8,
+                  backgroundColor: isSelected ? st.bg : C.white,
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                    <View style={{ backgroundColor: st.color, borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1, marginRight: 4 }}>
+                      <Text style={{ fontSize: 6, color: C.white, fontFamily: 'Helvetica-Bold' }}>{st.sub}</Text>
+                    </View>
+                    {isSelected && <Text style={{ fontSize: 7, color: st.color, fontFamily: 'Helvetica-Bold' }}>✓ Anbefalt</Text>}
+                  </View>
+                  <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: C.dark, marginBottom: 3 }}>{st.title}</Text>
+                  <Text style={{ fontSize: 7, color: C.muted, lineHeight: 1.4 }}>{st.desc}</Text>
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
         {strat ? (
           <View style={[s.stratCard, { borderColor: strat.color, backgroundColor: strat.bg }]}>
             <Text style={[s.stratTitle, { color: strat.color }]}>{strat.title}</Text>
