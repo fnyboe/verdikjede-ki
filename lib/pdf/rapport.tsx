@@ -40,8 +40,8 @@ const s = StyleSheet.create({
     color: C.dark,
     justifyContent: 'space-between',
   },
-  coverLogo: { height: 52, marginBottom: 28 },
-  coverCompanyName: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: C.dark, marginBottom: 2 },
+  coverLogo: { height: 80, width: 'auto', alignSelf: 'flex-start', marginBottom: 20 },
+  coverCompanyName: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: C.dark, marginBottom: 16 },
   coverLine: { height: 4, backgroundColor: C.emerald, marginTop: 20, marginBottom: 24 },
   coverMainTitle: { fontSize: 19, fontFamily: 'Helvetica-Bold', color: C.emerald, marginBottom: 10 },
   coverSubtitle: { fontSize: 13, color: C.muted },
@@ -107,11 +107,11 @@ const s = StyleSheet.create({
 })
 
 const TOC_ENTRIES = [
-  'Verdikjede',
-  'Prosessscoring',
-  'BXT-analyse',
-  'Oppgåver',
-  'Strategi og implementering',
+  'Definer verdikjede',
+  'Definer verdikjede-prosesser – evaluer og vel prosessar',
+  'Evaluer og vel prosessar for vidare oppgåveanalyse',
+  'Evaluer oppgåver',
+  'Strategisk tilnærming og forslag til implementering',
 ]
 
 function SectionHeader({ badge, title, subtitle }: { badge: string; title: string; subtitle?: string }) {
@@ -168,10 +168,10 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
       {/* ── PAGE 1: COVER ── */}
       <Page size="A4" style={s.coverPage}>
         <View>
+          <Text style={s.coverCompanyName}>{displayCompanyName}</Text>
           {analysis.logo_base64 ? (
             <Image src={analysis.logo_base64} style={s.coverLogo} />
           ) : null}
-          <Text style={s.coverCompanyName}>{displayCompanyName}</Text>
           <View style={s.coverLine} />
           <Text style={s.coverMainTitle}>KI-analyse: Kor i verdikjeda passar KI best?</Text>
           <Text style={s.coverSubtitle}>{analysis.title}</Text>
@@ -194,7 +194,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
       {/* ── PAGE 3: STEG 1 – VERDIKJEDE ── */}
       <Page size="A4" style={s.page}>
-        <SectionHeader badge="1" title="Verdikjede" subtitle="Identifiserte steg i verdikjeda" />
+        <SectionHeader badge="1" title="Definer verdikjede" subtitle="Identifiserte steg i verdikjeda" />
         <View>
           {vcSteps.map((vs, i) => (
             <View key={vs.id} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 7 }}>
@@ -213,7 +213,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
       {/* ── PAGE 4: STEG 2 – PROSESSSCORING ── */}
       <Page size="A4" style={s.page}>
-        <SectionHeader badge="2" title="Prosessscoring" subtitle="Scorar per dimensjon (1–5). Prosessar med ✓ er inkluderte i vidare analyse." />
+        <SectionHeader badge="2" title="Definer verdikjede-prosesser" subtitle="Evaluer og vel prosessar. Scorar per dimensjon (1–5). Prosessar med ✓ er inkluderte i vidare analyse." />
         {vcSteps.map(vs => {
           const procs = procsByVcStep[vs.id] ?? []
           if (procs.length === 0) return null
@@ -247,7 +247,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
       {/* ── PAGE 5+: STEG 3 – BXT-ANALYSE ── */}
       <Page size="A4" style={s.page}>
-        <SectionHeader badge="3" title="BXT-analyse" subtitle="Detaljert analyse per inkludert prosess" />
+        <SectionHeader badge="3" title="Evaluer og vel prosessar" subtitle="Vidare oppgåveanalyse per inkludert prosess" />
         {includedProcs.map(p => (
           <View key={p.id} style={s.processCard} wrap={false}>
             <Text style={s.processTitle}>{p.name}</Text>
@@ -313,7 +313,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
       {/* ── PAGE: STEG 4 – OPPGÅVER ── */}
       <Page size="A4" style={s.page}>
-        <SectionHeader badge="4" title="Oppgåver" subtitle="KI-kandidatar per inkludert prosess" />
+        <SectionHeader badge="4" title="Evaluer oppgåver" subtitle="KI-kandidatar per inkludert prosess" />
         {includedProcs.map(p => {
           const procTasks = tasksByProcess[p.id] ?? []
           if (procTasks.length === 0) return null
@@ -341,7 +341,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
       {/* ── PAGE: STEG 5 – STRATEGI OG IMPLEMENTERING ── */}
       <Page size="A4" style={s.page}>
-        <SectionHeader badge="5" title="Strategi og implementering" />
+        <SectionHeader badge="5" title="Strategisk tilnærming og forslag til implementering" />
         {strat ? (
           <View style={[s.stratCard, { borderColor: strat.color, backgroundColor: strat.bg }]}>
             <Text style={[s.stratTitle, { color: strat.color }]}>{strat.title}</Text>
