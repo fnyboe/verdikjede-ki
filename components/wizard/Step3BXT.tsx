@@ -227,7 +227,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
     vcGroups.map(({ vs, color }) => [vs.id, color])
   )
 
-  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId)
+  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
 
   // Scatter plot covers only BXT-included processes across all vc_steps, coloured by vc_step
   const plotProcesses: PlotProcess[] = processes
