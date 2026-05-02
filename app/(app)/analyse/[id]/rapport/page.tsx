@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import Link from 'next/link'
+import { AutoDownload } from './AutoDownload'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -20,6 +21,8 @@ export default async function RapportPage({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      <AutoDownload id={id} />
+
       <div className="flex flex-col gap-2">
         <p className="text-sm text-slate-500">{analyse.title}</p>
         <h1 className="text-2xl font-bold text-[#1E293B]">Sluttrapport</h1>
@@ -27,8 +30,8 @@ export default async function RapportPage({ params }: Props) {
 
       <div className="bg-white rounded-xl border border-slate-200 p-10 flex flex-col items-center gap-5">
         <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-base font-semibold text-[#1E293B]">PDF-rapport er klar til nedlasting</p>
-          <p className="text-sm text-slate-500">Rapporten inneheld alle fem steg av analysen.</p>
+          <p className="text-base font-semibold text-[#1E293B]">Nedlasting startar automatisk…</p>
+          <p className="text-sm text-slate-500">Viss ikkje, klikk knappen under.</p>
         </div>
         <a
           href={`/api/rapport/${id}`}
