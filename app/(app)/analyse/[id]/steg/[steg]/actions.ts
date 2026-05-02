@@ -314,7 +314,7 @@ export async function saveStrategyAction(
 
 export async function saveCompanyInfoAction(
   analyseId: string,
-  data: { company_name: string; logo_base64: string | null }
+  data: { company_name: string; logo_base64: string | null; company_description: string; website_url: string }
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()

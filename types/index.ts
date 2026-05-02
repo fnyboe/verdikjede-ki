@@ -24,6 +24,8 @@ export interface Analysis {
   strategy_text: string | null
   company_name: string | null
   logo_base64: string | null
+  company_description: string | null
+  website_url: string | null
   created_at: string
   updated_at: string
 }

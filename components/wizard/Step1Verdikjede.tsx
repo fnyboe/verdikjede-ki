@@ -37,8 +37,8 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   const [steg, setSteg] = useState<string[]>(
     harEksisterande ? eksisterendeSteg.map((s) => s.name) : ['', '']
   )
-  const [beskrivelse, setBeskrivelse] = useState('')
-  const [url, setUrl] = useState('')
+  const [beskrivelse, setBeskrivelse] = useState(analysis.company_description ?? '')
+  const [url, setUrl] = useState(analysis.website_url ?? '')
   const [file, setFile] = useState<File | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -53,7 +53,12 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   const kanGaaNeste = filledCount >= 2
 
   async function handleSaveCompanyInfo(name: string, logo: string | null) {
-    await saveCompanyInfoAction(analyseId, { company_name: name, logo_base64: logo })
+    await saveCompanyInfoAction(analyseId, {
+      company_name: name,
+      logo_base64: logo,
+      company_description: beskrivelse,
+      website_url: url,
+    })
   }
 
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -188,6 +193,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
           <textarea
             value={beskrivelse}
             onChange={(e) => setBeskrivelse(e.target.value)}
+            onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
             placeholder="Beskriv kva selskapet gjer, kva bransje det er i, og kva produkt/tenester det tilbyr..."
             rows={4}
             disabled={harEksisterande}
@@ -201,6 +207,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
             placeholder="https://eksempel.no"
             disabled={harEksisterande}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
