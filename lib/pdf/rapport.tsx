@@ -165,6 +165,13 @@ function avgBxtScore(bxt_scores: Record<string, number | string> | null): number
   return values.reduce((sum, v) => sum + v, 0) / values.length
 }
 
+function avgDimsScore(scores: Record<string, number> | null): number {
+  if (!scores) return 0
+  const values = DIMS.map(d => scores[d.key]).filter((v): v is number => typeof v === 'number')
+  if (values.length === 0) return 0
+  return values.reduce((sum, v) => sum + v, 0) / values.length
+}
+
 export function RapportDocument({ analysis, companyName, vcSteps, processes, tasks }: RapportData) {
   const displayCompanyName = analysis.company_name ?? companyName
   const includedProcs = processes.filter(p => p.included)
@@ -183,6 +190,30 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
     ? getStratKey(analysis.vc_control, analysis.tech_breadth)
     : null
   const strat = stratKey ? STRATS[stratKey] : null
+
+  const vcStepMap = new Map(vcSteps.map(vs => [vs.id, vs]))
+
+  const step2IncludedRows = processes
+    .filter(p => p.included)
+    .map(p => ({
+      vcStepName: p.vc_step_id ? (vcStepMap.get(p.vc_step_id)?.name ?? '–') : '–',
+      processName: p.name,
+      score: avgDimsScore(p.scores),
+    }))
+    .sort((a, b) => b.score - a.score)
+
+  const includedVcStepIds = new Set(
+    processes.filter(p => p.included && p.vc_step_id).map(p => p.vc_step_id as string)
+  )
+  const emptyVcSteps = vcSteps.filter(vs => !includedVcStepIds.has(vs.id))
+
+  const step3IncludedRows = [...includedProcs]
+    .map(p => ({
+      vcStepName: p.vc_step_id ? (vcStepMap.get(p.vc_step_id)?.name ?? '–') : '–',
+      processName: p.name,
+      score: avgBxtScore(p.bxt_scores),
+    }))
+    .sort((a, b) => b.score - a.score)
 
   return (
     <Document title={analysis.title} author={displayCompanyName}>
@@ -237,34 +268,33 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
       <Page size="A4" style={s.page}>
         <SectionHeader badge="2" title="Definer verdikjede-prosesser" subtitle="Evaluer og vel prosessar. Scorar per dimensjon (1–5). Prosessar med ✓ er inkluderte i vidare analyse." />
 
-        {/* Oppsummering: inkluderte og ikkje inkluderte */}
+        {/* Oppsummering: rangert oversikt */}
         <View style={s.summaryBox}>
-          <View style={{ flexDirection: 'row' }}>
-            <View style={{ flex: 1, marginRight: 16 }}>
-              <Text style={s.summaryTitle}>INKLUDERTE PROSESSAR</Text>
-              {processes.filter(p => p.included).map(p => (
-                <View key={p.id} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                  <Text style={{ fontSize: 9, color: C.emerald, fontFamily: 'Helvetica-Bold', marginRight: 5 }}>✓</Text>
-                  <Text style={{ fontSize: 9, color: C.dark }}>{p.name}</Text>
-                </View>
-              ))}
-              {processes.filter(p => p.included).length === 0 && (
-                <Text style={{ fontSize: 9, color: C.muted }}>Ingen valde</Text>
-              )}
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.summaryTitle}>IKKJE INKLUDERTE PROSESSAR</Text>
-              {processes.filter(p => !p.included).map(p => (
-                <View key={p.id} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                  <Text style={{ fontSize: 9, color: C.muted, marginRight: 5 }}>✗</Text>
-                  <Text style={{ fontSize: 9, color: C.muted }}>{p.name}</Text>
-                </View>
-              ))}
-              {processes.filter(p => !p.included).length === 0 && (
-                <Text style={{ fontSize: 9, color: C.muted }}>Ingen</Text>
-              )}
-            </View>
+          <Text style={s.summaryTitle}>PROSESSAR ANBEFALT FOR VIDARE ANALYSE (RANGERT ETTER SCORE)</Text>
+          <View style={s.tableHeader}>
+            <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>#</Text>
+            <Text style={[s.tableHeaderCell, { flex: 2 }]}>Verdikjede</Text>
+            <Text style={[s.tableHeaderCell, { flex: 4 }]}>Prosess</Text>
+            <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>Score</Text>
           </View>
+          {step2IncludedRows.map((row, i) => (
+            <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.emerald, fontFamily: 'Helvetica-Bold' }]}>{i + 1}</Text>
+              <Text style={[s.tableCell, { flex: 2 }]}>{row.vcStepName}</Text>
+              <Text style={[s.tableCell, { flex: 4 }]}>{row.processName}</Text>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>
+                {row.score > 0 ? row.score.toFixed(1) : '–'}
+              </Text>
+            </View>
+          ))}
+          {emptyVcSteps.map((vs, i) => (
+            <View key={vs.id} style={[s.tableRow, (step2IncludedRows.length + i) % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.muted }]}>–</Text>
+              <Text style={[s.tableCell, { flex: 2, color: C.muted }]}>{vs.name}</Text>
+              <Text style={[s.tableCellMuted, { flex: 4 }]}>Ingen prosessar anbefalt vidare</Text>
+              <Text style={[s.tableCell, { flex: 1 }]}></Text>
+            </View>
+          ))}
         </View>
 
         {vcSteps.map(vs => {
@@ -303,27 +333,33 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
         <SectionHeader badge="3" title="Evaluer og vel prosessar" subtitle="Vidare oppgåveanalyse per inkludert prosess" />
 
         {/* Rangert oppsummering */}
-        {includedProcs.length > 0 && (
-          <View style={s.summaryBox}>
-            <Text style={s.summaryTitle}>TILRÅDDE PROSESSAR (RANGERT ETTER EVALUERINGSSCORE)</Text>
-            <View style={s.tableHeader}>
-              <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>#</Text>
-              <Text style={[s.tableHeaderCell, { flex: 5 }]}>Prosess</Text>
-              <Text style={[s.tableHeaderCell, { flex: 2, textAlign: 'center' }]}>Snittpoeng</Text>
-            </View>
-            {[...includedProcs]
-              .sort((a, b) => avgBxtScore(b.bxt_scores) - avgBxtScore(a.bxt_scores))
-              .map((p, i) => (
-                <View key={p.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
-                  <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.emerald, fontFamily: 'Helvetica-Bold' }]}>{i + 1}</Text>
-                  <Text style={[s.tableCell, { flex: 5 }]}>{p.name}</Text>
-                  <Text style={[s.tableCell, { flex: 2, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>
-                    {avgBxtScore(p.bxt_scores) > 0 ? avgBxtScore(p.bxt_scores).toFixed(1) : '–'}
-                  </Text>
-                </View>
-              ))}
+        <View style={s.summaryBox}>
+          <Text style={s.summaryTitle}>TILRÅDDE PROSESSAR (RANGERT ETTER EVALUERINGSSCORE)</Text>
+          <View style={s.tableHeader}>
+            <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>#</Text>
+            <Text style={[s.tableHeaderCell, { flex: 2 }]}>Verdikjede</Text>
+            <Text style={[s.tableHeaderCell, { flex: 4 }]}>Prosess</Text>
+            <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>Snittpoeng</Text>
           </View>
-        )}
+          {step3IncludedRows.map((row, i) => (
+            <View key={i} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.emerald, fontFamily: 'Helvetica-Bold' }]}>{i + 1}</Text>
+              <Text style={[s.tableCell, { flex: 2 }]}>{row.vcStepName}</Text>
+              <Text style={[s.tableCell, { flex: 4 }]}>{row.processName}</Text>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>
+                {row.score > 0 ? row.score.toFixed(1) : '–'}
+              </Text>
+            </View>
+          ))}
+          {emptyVcSteps.map((vs, i) => (
+            <View key={vs.id} style={[s.tableRow, (step3IncludedRows.length + i) % 2 === 1 ? s.tableRowAlt : {}]}>
+              <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.muted }]}>–</Text>
+              <Text style={[s.tableCell, { flex: 2, color: C.muted }]}>{vs.name}</Text>
+              <Text style={[s.tableCellMuted, { flex: 4 }]}>Ingen prosessar anbefalt vidare</Text>
+              <Text style={[s.tableCell, { flex: 1 }]}></Text>
+            </View>
+          ))}
+        </View>
 
         {includedProcs.map(p => (
           <View key={p.id} style={s.processCard} wrap={false}>
