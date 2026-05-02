@@ -691,7 +691,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
                 </div>
               </div>
               {vcSteps.map(vs => {
-                const vsProcs = processes.filter(p => p.vc_step_id === vs.id && p.included)
+                const vsProcs = processes.filter(p => p.vc_step_id === vs.id)
                 if (!vsProcs.length) return null
                 return (
                   <div key={vs.id} className="flex flex-col gap-2">
