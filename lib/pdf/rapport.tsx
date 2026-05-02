@@ -104,6 +104,15 @@ const s = StyleSheet.create({
   stratDesc: { fontSize: 9, marginBottom: 10 },
   stratAction: { fontSize: 9, marginBottom: 3 },
   stratText: { fontSize: 9, lineHeight: 1.7 },
+  summaryBox: {
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 4,
+    padding: 10,
+    marginBottom: 16,
+    backgroundColor: C.bg,
+  },
+  summaryTitle: { fontSize: 7, fontFamily: 'Helvetica-Bold', color: C.muted, marginBottom: 8, letterSpacing: 0.5 },
 })
 
 const TOC_ENTRIES = [
@@ -141,6 +150,19 @@ function formatDate(dateStr: string): string {
   } catch {
     return dateStr
   }
+}
+
+function avgBxtScore(bxt_scores: Record<string, number | string> | null): number {
+  if (!bxt_scores) return 0
+  const allItems = BXT_CATS.flatMap(cat => cat.items)
+  const values = allItems
+    .map(item => {
+      const v = bxt_scores[item.key]
+      return typeof v === 'number' ? v : parseFloat(String(v))
+    })
+    .filter(v => !isNaN(v))
+  if (values.length === 0) return 0
+  return values.reduce((sum, v) => sum + v, 0) / values.length
 }
 
 export function RapportDocument({ analysis, companyName, vcSteps, processes, tasks }: RapportData) {
@@ -214,6 +236,37 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
       {/* ── PAGE 4: STEG 2 – PROSESSSCORING ── */}
       <Page size="A4" style={s.page}>
         <SectionHeader badge="2" title="Definer verdikjede-prosesser" subtitle="Evaluer og vel prosessar. Scorar per dimensjon (1–5). Prosessar med ✓ er inkluderte i vidare analyse." />
+
+        {/* Oppsummering: inkluderte og ikkje inkluderte */}
+        <View style={s.summaryBox}>
+          <View style={{ flexDirection: 'row' }}>
+            <View style={{ flex: 1, marginRight: 16 }}>
+              <Text style={s.summaryTitle}>INKLUDERTE PROSESSAR</Text>
+              {processes.filter(p => p.included).map(p => (
+                <View key={p.id} style={{ flexDirection: 'row', marginBottom: 3 }}>
+                  <Text style={{ fontSize: 9, color: C.emerald, fontFamily: 'Helvetica-Bold', marginRight: 5 }}>✓</Text>
+                  <Text style={{ fontSize: 9, color: C.dark }}>{p.name}</Text>
+                </View>
+              ))}
+              {processes.filter(p => p.included).length === 0 && (
+                <Text style={{ fontSize: 9, color: C.muted }}>Ingen valde</Text>
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.summaryTitle}>IKKJE INKLUDERTE PROSESSAR</Text>
+              {processes.filter(p => !p.included).map(p => (
+                <View key={p.id} style={{ flexDirection: 'row', marginBottom: 3 }}>
+                  <Text style={{ fontSize: 9, color: C.muted, marginRight: 5 }}>✗</Text>
+                  <Text style={{ fontSize: 9, color: C.muted }}>{p.name}</Text>
+                </View>
+              ))}
+              {processes.filter(p => !p.included).length === 0 && (
+                <Text style={{ fontSize: 9, color: C.muted }}>Ingen</Text>
+              )}
+            </View>
+          </View>
+        </View>
+
         {vcSteps.map(vs => {
           const procs = procsByVcStep[vs.id] ?? []
           if (procs.length === 0) return null
@@ -245,9 +298,33 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
         })}
       </Page>
 
-      {/* ── PAGE 5+: STEG 3 – BXT-ANALYSE ── */}
+      {/* ── PAGE 5+: STEG 3 – EVALUERINGSANALYSE ── */}
       <Page size="A4" style={s.page}>
         <SectionHeader badge="3" title="Evaluer og vel prosessar" subtitle="Vidare oppgåveanalyse per inkludert prosess" />
+
+        {/* Rangert oppsummering */}
+        {includedProcs.length > 0 && (
+          <View style={s.summaryBox}>
+            <Text style={s.summaryTitle}>TILRÅDDE PROSESSAR (RANGERT ETTER EVALUERINGSSCORE)</Text>
+            <View style={s.tableHeader}>
+              <Text style={[s.tableHeaderCell, { flex: 1, textAlign: 'center' }]}>#</Text>
+              <Text style={[s.tableHeaderCell, { flex: 5 }]}>Prosess</Text>
+              <Text style={[s.tableHeaderCell, { flex: 2, textAlign: 'center' }]}>Snittpoeng</Text>
+            </View>
+            {[...includedProcs]
+              .sort((a, b) => avgBxtScore(b.bxt_scores) - avgBxtScore(a.bxt_scores))
+              .map((p, i) => (
+                <View key={p.id} style={[s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}]}>
+                  <Text style={[s.tableCell, { flex: 1, textAlign: 'center', color: C.emerald, fontFamily: 'Helvetica-Bold' }]}>{i + 1}</Text>
+                  <Text style={[s.tableCell, { flex: 5 }]}>{p.name}</Text>
+                  <Text style={[s.tableCell, { flex: 2, textAlign: 'center', fontFamily: 'Helvetica-Bold' }]}>
+                    {avgBxtScore(p.bxt_scores) > 0 ? avgBxtScore(p.bxt_scores).toFixed(1) : '–'}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        )}
+
         {includedProcs.map(p => (
           <View key={p.id} style={s.processCard} wrap={false}>
             <Text style={s.processTitle}>{p.name}</Text>
@@ -289,7 +366,7 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
             {p.bxt_scores && Object.keys(p.bxt_scores).length > 0 ? (
               <View style={{ marginTop: 4 }}>
-                <Text style={[s.label, { marginBottom: 6 }]}>BXT-SCORAR</Text>
+                <Text style={[s.label, { marginBottom: 6 }]}>EVALUERINGSSCORAR</Text>
                 <View style={{ flexDirection: 'row' }}>
                   {BXT_CATS.map(cat => (
                     <View key={cat.key} style={{ flex: 1, marginRight: 6 }}>
