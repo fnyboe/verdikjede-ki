@@ -17,7 +17,7 @@ export default async function DashboardPage() {
 
   const isAdmin = profile?.role === 'admin'
 
-  let analyses: (Analysis & { company_name?: string })[] = []
+  let analyses: Analysis[] = []
 
   if (isAdmin) {
     const result = await getAllAnalyses()

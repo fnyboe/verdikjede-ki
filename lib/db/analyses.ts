@@ -56,6 +56,20 @@ export async function saveStrategy(
   return { success: true }
 }
 
+export async function saveCompanyInfo(
+  analysisId: string,
+  data: { company_name: string; logo_base64: string | null }
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase
+    .from('analyses')
+    .update(data)
+    .eq('id', analysisId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function createAnalysis(companyId: string, title: string): Promise<ServerActionResult<Analysis>> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase

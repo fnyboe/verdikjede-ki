@@ -22,6 +22,8 @@ export interface Analysis {
   vc_control: string | null
   tech_breadth: string | null
   strategy_text: string | null
+  company_name: string | null
+  logo_base64: string | null
   created_at: string
   updated_at: string
 }

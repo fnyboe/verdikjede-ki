@@ -43,7 +43,7 @@ export default async function StegPage({ params }: Props) {
           <p className="text-sm text-slate-500">{analyse.title}</p>
           <WizardSteps stegNr={stegNr} />
         </div>
-        <Step1Verdikjede key={Date.now()} analyseId={id} eksisterendeSteg={eksisterendeSteg} />
+        <Step1Verdikjede key={Date.now()} analyseId={id} eksisterendeSteg={eksisterendeSteg} analysis={analyse} />
       </div>
     )
   } else if (stegNr === 2) {

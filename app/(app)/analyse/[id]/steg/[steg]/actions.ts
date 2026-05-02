@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { saveVcSteps } from '@/lib/db/vc_steps'
 import { getProcessesByVcStep, saveProcesses, saveWeights, updateProcessDesc, saveBxtData, saveProcessIncluded } from '@/lib/db/processes'
 import { getTasksByProcess, saveTasks, deleteTask, updateTask } from '@/lib/db/tasks'
-import { saveStrategy } from '@/lib/db/analyses'
+import { saveStrategy, saveCompanyInfo } from '@/lib/db/analyses'
 import type { Process, Task, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
@@ -310,6 +310,33 @@ export async function saveStrategyAction(
   }
 
   return saveStrategy(analyseId, data)
+}
+
+export async function saveCompanyInfoAction(
+  analyseId: string,
+  data: { company_name: string; logo_base64: string | null }
+): Promise<ServerActionResult> {
+  const supabase = createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Ikkje innlogga' }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('company_id')
+    .eq('id', user.id)
+    .single()
+
+  const { data: analyse } = await supabase
+    .from('analyses')
+    .select('company_id')
+    .eq('id', analyseId)
+    .single()
+
+  if (!analyse || analyse.company_id !== profile?.company_id) {
+    return { success: false, error: 'Ingen tilgang til denne analysen' }
+  }
+
+  return saveCompanyInfo(analyseId, data)
 }
 
 export async function updateTaskAction(

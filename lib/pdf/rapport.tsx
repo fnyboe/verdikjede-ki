@@ -1,5 +1,5 @@
 import React from 'react'
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { DIMS, BXT_CATS, STRATS } from '@/lib/constants'
 import type { Analysis, VcStep, Process, Task } from '@/types'
 
@@ -143,8 +143,11 @@ export function RapportDocument({ analysis, companyName, vcSteps, processes, tas
 
         {/* FORSIDEINFO */}
         <View style={{ marginBottom: 28 }}>
+          {analysis.logo_base64 ? (
+            <Image src={analysis.logo_base64} style={{ height: 48, marginBottom: 14, objectFit: 'contain', alignSelf: 'flex-start' }} />
+          ) : null}
           <Text style={s.coverTitle}>{analysis.title}</Text>
-          <Text style={s.coverCompany}>{companyName}</Text>
+          <Text style={s.coverCompany}>{analysis.company_name ?? companyName}</Text>
           <View style={s.coverLine} />
           <Text style={s.coverDate}>Generert: {formatDate(analysis.created_at)}</Text>
         </View>

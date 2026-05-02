@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { saveVcStepsAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
+import { saveVcStepsAction, saveCompanyInfoAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
-import type { VcStep } from '@/types'
+import type { VcStep, Analysis } from '@/types'
 
 interface Props {
   analyseId: string
   eksisterendeSteg: VcStep[]
+  analysis: Analysis
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -20,7 +21,16 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-export function Step1Verdikjede({ analyseId, eksisterendeSteg }: Props) {
+function fileToDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props) {
   const router = useRouter()
   const harEksisterande = eksisterendeSteg.length > 0
 
@@ -35,8 +45,35 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg }: Props) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  const [companyName, setCompanyName] = useState(analysis.company_name ?? '')
+  const [logoDataUri, setLogoDataUri] = useState<string | null>(analysis.logo_base64 ?? null)
+  const [logoError, setLogoError] = useState<string | null>(null)
+
   const filledCount = steg.filter((s) => s.trim().length > 0).length
   const kanGaaNeste = filledCount >= 2
+
+  async function handleSaveCompanyInfo(name: string, logo: string | null) {
+    await saveCompanyInfoAction(analyseId, { company_name: name, logo_base64: logo })
+  }
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setLogoError(null)
+    const f = e.target.files?.[0]
+    if (!f) return
+
+    if (!['image/png', 'image/jpeg', 'image/jpg'].includes(f.type)) {
+      setLogoError('Kun PNG og JPG er støtta')
+      return
+    }
+    if (f.size > 2 * 1024 * 1024) {
+      setLogoError('Fila er for stor (maks 2 MB)')
+      return
+    }
+
+    const dataUri = await fileToDataUri(f)
+    setLogoDataUri(dataUri)
+    await handleSaveCompanyInfo(companyName, dataUri)
+  }
 
   async function handleLagForslag() {
     if (!beskrivelse.trim()) {
@@ -105,6 +142,43 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg }: Props) {
         <div>
           <h2 className="text-base font-semibold text-[#1E293B] mb-1">Om selskapet</h2>
           <p className="text-sm text-slate-500">Fyll inn informasjon om selskapet så KI kan foreslå verdikjedesteg.</p>
+        </div>
+
+        {/* Namn på bedrift */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-[#1E293B]">Namn på bedrift</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+            onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
+            placeholder="Skriv inn bedriftsnamnet..."
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+          />
+        </div>
+
+        {/* Last opp logo */}
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-[#1E293B]">Logo (valfritt)</label>
+          <div className="flex items-center gap-4">
+            {logoDataUri && (
+              <img
+                src={logoDataUri}
+                alt="Logo"
+                className="h-12 w-auto object-contain rounded border border-slate-200 bg-slate-50 p-1"
+              />
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg"
+              onChange={handleLogoChange}
+              className="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+            />
+          </div>
+          {logoError
+            ? <p className="text-xs text-red-500">{logoError}</p>
+            : <p className="text-xs text-slate-400">PNG eller JPG – maks 2 MB. Visast på forsida av rapporten.</p>
+          }
         </div>
 
         <div className="flex flex-col gap-1">
