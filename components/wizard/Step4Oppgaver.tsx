@@ -158,6 +158,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
   const [aiGenerating, setAiGenerating] = useState(false)
   const [savingTask, setSavingTask] = useState<Record<string, boolean>>({})
+  const [openedProcessIds, setOpenedProcessIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(async results => {
@@ -186,11 +187,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
       }
       setTasks(taskMap)
       setIsLoadingFromDB(false)
-
-      const needsTasks = allProcs.filter(p => (s3inc[p.id] ?? false) && (taskMap[p.id] ?? []).length === 0)
-      if (needsTasks.length > 0) {
-        await generateTasks(needsTasks)
-      }
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -238,6 +234,30 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
     setAiGenerating(false)
   }
 
+  async function handleOpen(processId: string, isCurrentlyOpen: boolean) {
+    if (isCurrentlyOpen) {
+      setOpenId(null)
+      return
+    }
+    setOpenId(processId)
+    setOpenedProcessIds(prev => new Set(Array.from(prev).concat(processId)))
+
+    const hasTasks = (tasks[processId]?.length ?? 0) > 0
+    if (hasTasks) return
+
+    setAiGenerating(true)
+    try {
+      const proc = processes.find(p => p.id === processId)
+      if (!proc) return
+      const saved = await generateTasksForProcess(proc)
+      if (saved) {
+        setTasks(prev => ({ ...prev, [processId]: saved }))
+      }
+    } finally {
+      setAiGenerating(false)
+    }
+  }
+
   function handleUpdateTaskLocal(
     taskId: string,
     processId: string,
@@ -275,15 +295,16 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
   const vcGroups = vcSteps
     .map(vs => {
-      const procs = processes.filter(p => p.vc_step_id === vs.id && (step3Included[p.id] ?? false))
+      const procs = processes.filter(p => p.vc_step_id === vs.id && (p.included ?? false))
       if (!procs.length) return null
       return { vs, procs }
     })
     .filter((g): g is { vs: VcStep; procs: Process[] } => g !== null)
 
-  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && (step3Included[p.id] ?? false))
+  const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && (p.included ?? false))
   const includedProcs = processes.filter(p => p.vc_step_id === activeVcId)
   const allTasks = includedProcs.flatMap(p => tasks[p.id] ?? [])
+  const allIncludedOpened = activeProcs.every(p => openedProcessIds.has(p.id))
 
   return (
     <div className="flex flex-col gap-6">
@@ -352,7 +373,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                   >
                     {/* Accordion-header */}
                     <button
-                      onClick={() => setOpenId(isOpen ? null : process.id)}
+                      onClick={() => handleOpen(process.id, isOpen)}
                       className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors"
                       style={{ background: isOpen ? '#1E293B' : '#FAFBFC', color: isOpen ? '#F8FAFC' : '#1E293B' }}
                     >
@@ -612,12 +633,18 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         >
           ← Førre steg
         </Button>
-        <Button
-          onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/5`) }}
-          className="bg-[#10B981] hover:bg-[#059669] text-white"
-        >
-          Neste steg →
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/5`) }}
+            disabled={!allIncludedOpened}
+            className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
+          >
+            Neste steg →
+          </Button>
+          {!allIncludedOpened && (
+            <p className="text-xs text-slate-500">Opne alle prosessane for å gå vidare</p>
+          )}
+        </div>
       </div>
     </div>
   )
