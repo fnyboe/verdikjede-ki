@@ -271,8 +271,6 @@ export function Step2Prosessscoring({
       if (generated.length > 0) {
         await runAIScoresForTab(vsId, vsName, generated)
       }
-    } else if (currentRows.length > 0 && !scoreLoading[vsId] && !isLoadingFromDB) {
-      await runAIScoresForTab(vsId, vsName, currentRows)
     }
   }
 
