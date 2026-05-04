@@ -229,6 +229,12 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   )
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
+  console.log('DEBUG allIncludedOpened:', processes.filter(p => p.included).map(p => ({
+    name: p.name,
+    included: p.included,
+    problem_desc: !!p.problem_desc,
+    inOpenedIds: openedProcessIds.has(p.id)
+  })))
   const allIncludedOpened = processes.filter(p => p.included).every(p => openedProcessIds.has(p.id) || !!p.problem_desc)
 
   // Scatter plot covers only BXT-included processes across all vc_steps, coloured by vc_step
