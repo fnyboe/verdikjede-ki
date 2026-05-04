@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   getProcessesForVcStepAction,
-  getTasksByProcessAction,
   saveTasksAction,
   deleteTaskAction,
   updateTaskAction,
@@ -154,7 +153,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const [openId, setOpenId] = useState<string | null>(null)
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
   const [activeVcId, setActiveVcId] = useState<string | null>(null)
-  const [step3Included, setStep3Included] = useState<Record<string, boolean>>({})
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
   const [aiGenerating, setAiGenerating] = useState(false)
   const [savingTask, setSavingTask] = useState<Record<string, boolean>>({})
@@ -177,8 +175,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
       if (firstVc) setActiveVcId(firstVc.id)
       setProcesses(allProcs)
-      setStep3Included(s3inc)
-
       setTasks({})
       setIsLoadingFromDB(false)
     })
@@ -215,17 +211,6 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
       console.error('[steg4] Uhandtert feil for', p.name, err)
       return null
     }
-  }
-
-  async function generateTasks(toGenerate: Process[]) {
-    setAiGenerating(true)
-    for (const p of toGenerate) {
-      const saved = await generateTasksForProcess(p)
-      if (saved) {
-        setTasks(prev => ({ ...prev, [p.id]: saved }))
-      }
-    }
-    setAiGenerating(false)
   }
 
   async function handleOpen(processId: string, isCurrentlyOpen: boolean) {
