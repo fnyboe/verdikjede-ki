@@ -123,6 +123,7 @@ export function Step2Prosessscoring({
   const [saveError, setSaveError] = useState<string | null>(null)
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
   const [scoreLoading, setScoreLoading] = useState<Record<string, boolean>>({})
+  const [openedTabs, setOpenedTabs] = useState<Set<string>>(() => new Set(vcSteps[0]?.id ? [vcSteps[0].id] : []))
   const firstTabNeedsAI = useRef(false)
 
   useEffect(() => {
@@ -243,6 +244,7 @@ export function Step2Prosessscoring({
   }
 
   async function handleSelectTab(vsId: string, vsName: string) {
+    setOpenedTabs(prev => new Set(Array.from(prev).concat(vsId)))
     setActiveTab(vsId)
     const currentRows = rows[vsId] ?? []
 
@@ -381,6 +383,7 @@ export function Step2Prosessscoring({
   }
 
   const activeRows = rows[activeTab] ?? []
+  const allTabsOpened = vcSteps.every(vs => openedTabs.has(vs.id))
 
   return (
     <div className="flex flex-col gap-6">
@@ -683,13 +686,18 @@ export function Step2Prosessscoring({
         >
           {saving ? 'Lagrar...' : '← Førre steg'}
         </Button>
-        <Button
-          onClick={handleNeste}
-          disabled={!weightsValid || saving}
-          className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
-        >
-          {saving ? 'Lagrar...' : 'Neste steg →'}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={handleNeste}
+            disabled={!allTabsOpened || !weightsValid || saving}
+            className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
+          >
+            {saving ? 'Lagrar...' : 'Neste steg →'}
+          </Button>
+          {!allTabsOpened && (
+            <p className="text-xs text-slate-500">Opne alle fanene for å gå vidare</p>
+          )}
+        </div>
       </div>
     </div>
   )
