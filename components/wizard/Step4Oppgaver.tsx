@@ -283,17 +283,12 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && (p.included ?? false))
   const includedProcs = processes.filter(p => p.vc_step_id === activeVcId)
   const allTasks = includedProcs.flatMap(p => tasks[p.id] ?? [])
-  const allIncludedOpened = activeProcs.every(p => openedProcessIds.has(p.id))
+  const allIncludedOpened = processes
+    .filter(p => p.included ?? false)
+    .every(p => openedProcessIds.has(p.id))
 
   return (
     <div className="flex flex-col gap-6">
-      {aiGenerating && (
-        <div className="bg-white rounded-xl border border-[#10B981] p-4 flex items-center gap-3 mb-4">
-          <Spinner />
-          <p className="text-sm font-medium text-[#10B981]">Genererer oppgåveforslag...</p>
-        </div>
-      )}
-
       {isLoadingFromDB ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
