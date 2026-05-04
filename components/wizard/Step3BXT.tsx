@@ -431,7 +431,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
             <div className="flex gap-2 flex-wrap">
               {vcGroups.map(({ vs, tabScore }) => {
                 const active = vs.id === activeVcId
-                const vsIncluded = processes.some(p => p.vc_step_id === vs.id && (step2Included[p.id] ?? false))
+                const vsIncluded = processes.some(p => p.vc_step_id === vs.id && p.included)
                 return (
                   <button
                     key={vs.id}
