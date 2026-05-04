@@ -274,22 +274,24 @@ export function Step2Prosessscoring({
     }
   }
 
-  function updateName(vsId: string, i: number, value: string) {
-    setRows((prev) => ({
-      ...prev,
-      [vsId]: prev[vsId].map((r, idx) => (idx === i ? { ...r, name: value } : r)),
-    }))
+  async function saveCurrentTab(vsId: string, vsRows: ProcessRow[]) {
+    await saveProcessesAction(analyseId, vsId, vsRows)
   }
 
-  function updateScore(vsId: string, i: number, dimKey: string, value: number) {
-    setRows((prev) => ({
-      ...prev,
-      [vsId]: prev[vsId].map((r, idx) => {
-        if (idx !== i) return r
-        const newScores = { ...r.scores, [dimKey]: value }
-        return { ...r, scores: newScores, included: autoIncluded(newScores, weights, allDims) }
-      }),
-    }))
+  async function updateName(vsId: string, i: number, value: string) {
+    const updated = (rows[vsId] ?? []).map((r, idx) => (idx === i ? { ...r, name: value } : r))
+    setRows((prev) => ({ ...prev, [vsId]: updated }))
+    await saveCurrentTab(vsId, updated)
+  }
+
+  async function updateScore(vsId: string, i: number, dimKey: string, value: number) {
+    const updated = (rows[vsId] ?? []).map((r, idx) => {
+      if (idx !== i) return r
+      const newScores = { ...r.scores, [dimKey]: value }
+      return { ...r, scores: newScores, included: autoIncluded(newScores, weights, allDims) }
+    })
+    setRows((prev) => ({ ...prev, [vsId]: updated }))
+    await saveCurrentTab(vsId, updated)
   }
 
   function addRow(vsId: string) {
@@ -300,21 +302,19 @@ export function Step2Prosessscoring({
     }))
   }
 
-  function removeRow(vsId: string, i: number) {
-    setRows((prev) => ({
-      ...prev,
-      [vsId]: prev[vsId].filter((_, idx) => idx !== i),
-    }))
+  async function removeRow(vsId: string, i: number) {
+    const updated = (rows[vsId] ?? []).filter((_, idx) => idx !== i)
+    setRows((prev) => ({ ...prev, [vsId]: updated }))
+    await saveCurrentTab(vsId, updated)
   }
 
-  function toggleProcessIncluded(vsId: string, i: number) {
-    setRows((prev) => ({
-      ...prev,
-      [vsId]: prev[vsId].map((r, idx) => idx === i ? { ...r, included: !r.included } : r),
-    }))
+  async function toggleProcessIncluded(vsId: string, i: number) {
+    const updated = (rows[vsId] ?? []).map((r, idx) => idx === i ? { ...r, included: !r.included } : r)
+    setRows((prev) => ({ ...prev, [vsId]: updated }))
+    await saveCurrentTab(vsId, updated)
   }
 
-  function updateWeight(key: string, value: number) {
+  async function updateWeight(key: string, value: number) {
     const newWeights = { ...weights, [key]: isNaN(value) ? 0 : value }
     setWeights(newWeights)
     setRows((prev) =>
@@ -325,6 +325,7 @@ export function Step2Prosessscoring({
         ])
       )
     )
+    await saveWeightsAction(analyseId, newWeights)
   }
 
   async function handleForrige() {
@@ -475,7 +476,11 @@ export function Step2Prosessscoring({
                     <input
                       type="text"
                       value={row.name}
-                      onChange={(e) => updateName(activeTab, i, e.target.value)}
+                      onChange={(e) => setRows(prev => ({
+                        ...prev,
+                        [activeTab]: prev[activeTab].map((r2, idx) => idx === i ? { ...r2, name: e.target.value } : r2),
+                      }))}
+                      onBlur={(e) => void updateName(activeTab, i, e.target.value)}
                       placeholder="Prosessnamn"
                       className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
                     />
