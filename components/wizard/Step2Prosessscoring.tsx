@@ -383,7 +383,7 @@ export function Step2Prosessscoring({
   }
 
   const activeRows = rows[activeTab] ?? []
-  const allTabsOpened = vcSteps.every(vs => openedTabs.has(vs.id))
+  const allTabsOpened = vcSteps.every(vs => openedTabs.has(vs.id) || (rows[vs.id]?.length ?? 0) > 0)
 
   return (
     <div className="flex flex-col gap-6">
