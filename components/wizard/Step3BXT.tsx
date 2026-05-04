@@ -177,6 +177,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   const [isLoadingFromDB, setIsLoadingFromDB] = useState(true)
   const [step2Included, setStep2Included] = useState<Record<string, boolean>>({})
   const [plotFilter, setPlotFilter] = useState<string | null>(null)
+  const [openedProcessIds, setOpenedProcessIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     Promise.all(vcSteps.map(vs => getProcessesForVcStepAction(vs.id))).then(results => {
@@ -228,6 +229,7 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   )
 
   const activeProcs = processes.filter(p => p.vc_step_id === activeVcId && p.included)
+  const allIncludedOpened = processes.filter(p => p.included).every(p => openedProcessIds.has(p.id) || !!p.problem_desc)
 
   // Scatter plot covers only BXT-included processes across all vc_steps, coloured by vc_step
   const plotProcesses: PlotProcess[] = processes
@@ -326,9 +328,10 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
   }
 
   async function handleOpen(process: Process) {
-    if (!(step2Included[process.id] ?? false)) return
+    if (!process.included) return
     if (openId === process.id) { setOpenId(null); return }
     setOpenId(process.id)
+    setOpenedProcessIds(prev => new Set(Array.from(prev).concat(process.id)))
     setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
 
     // Step 1: problem/usecase AI
@@ -749,12 +752,18 @@ export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
         >
           ← Førre steg
         </Button>
-        <Button
-          onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/4`) }}
-          className="bg-[#10B981] hover:bg-[#059669] text-white"
-        >
-          Neste steg →
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/4`) }}
+            disabled={!allIncludedOpened}
+            className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
+          >
+            Neste steg →
+          </Button>
+          {!allIncludedOpened && (
+            <p className="text-xs text-slate-500">Opne alle prosessane for å gå vidare</p>
+          )}
+        </div>
       </div>
     </div>
   )
