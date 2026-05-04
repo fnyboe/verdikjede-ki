@@ -179,13 +179,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
       setProcesses(allProcs)
       setStep3Included(s3inc)
 
-      const taskResults = await Promise.all(allProcs.map(p => getTasksByProcessAction(p.id)))
-      const taskMap: Record<string, Task[]> = {}
-      for (let i = 0; i < allProcs.length; i++) {
-        const r = taskResults[i]
-        taskMap[allProcs[i].id] = r.success && r.data ? r.data : []
-      }
-      setTasks(taskMap)
+      setTasks({})
       setIsLoadingFromDB(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
