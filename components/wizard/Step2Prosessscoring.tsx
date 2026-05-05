@@ -641,16 +641,20 @@ export function Step2Prosessscoring({
                     if (!row.name.trim()) return null
                     const avg = calcWeightedAvg(row.scores, weights, allDims)
                     const isAutoThreshold = autoIncluded(row.scores, weights, allDims)
-                    const state = row.included ? (isAutoThreshold ? 'auto' : 'manual') : 'excluded'
+                    const state = row.manually_excluded
+                      ? 'manually_excluded'
+                      : row.included ? (isAutoThreshold ? 'auto' : 'manual') : 'excluded'
                     const boxStyle = {
-                      auto:     { bg: '#D1FAE5', border: '2px solid #10B981' },
-                      manual:   { bg: '#F0FDF4', border: '2px dashed #10B981' },
-                      excluded: { bg: '#F8FAFC', border: '2px solid #E2E8F0' },
+                      auto:               { bg: '#D1FAE5', border: '2px solid #10B981' },
+                      manual:             { bg: '#F0FDF4', border: '2px dashed #10B981' },
+                      excluded:           { bg: '#F8FAFC', border: '2px solid #E2E8F0' },
+                      manually_excluded:  { bg: '#FEF2F2', border: '2px dashed #EF4444' },
                     }[state]
                     const badgeStyle = {
-                      auto:     { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
-                      manual:   { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
-                      excluded: { bg: '#E2E8F0', color: '#64748B', text: 'Ikkje inkludert' },
+                      auto:               { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
+                      manual:             { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
+                      excluded:           { bg: '#E2E8F0', color: '#64748B', text: 'Ikkje inkludert' },
+                      manually_excluded:  { bg: '#FEE2E2', color: '#DC2626', text: '✕ Manuelt ekskludert' },
                     }[state]
                     return (
                       <div
