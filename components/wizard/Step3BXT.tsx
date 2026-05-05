@@ -691,32 +691,32 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
               {vcSteps.map(vs => {
                 const vsProcs = processes.filter(p => p.vc_step_id === vs.id)
                 if (!vsProcs.length) return null
+                const includedProcs = vsProcs.filter(p => p.included)
+                const excludedProcs = vsProcs.filter(p => !p.included)
                 return (
                   <div key={vs.id} className="flex flex-col gap-2">
                     <div className="text-center text-sm font-bold text-[#1E293B] py-1 border-b border-slate-200">
                       {vs.name}
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-                      {vsProcs.map(p => {
+                      {includedProcs.map(p => {
                         const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
                         const autoIncl = agg.total >= 4
-                        const state = p.included ? (autoIncl ? 'auto' : 'manual') : 'excluded'
+                        const state = autoIncl ? 'auto' : 'manual'
                         const boxStyle = {
-                          auto:     { bg: '#D1FAE5', border: '2px solid #10B981' },
-                          manual:   { bg: '#F0FDF4', border: '2px dashed #10B981' },
-                          excluded: { bg: '#F8FAFC', border: '2px solid #E2E8F0' },
+                          auto:   { bg: '#D1FAE5', border: '2px solid #10B981' },
+                          manual: { bg: '#F0FDF4', border: '2px dashed #10B981' },
                         }[state]
                         const badgeStyle = {
-                          auto:     { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
-                          manual:   { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
-                          excluded: { bg: '#E2E8F0', color: '#64748B', text: 'Ikkje inkludert' },
+                          auto:   { bg: '#D1FAE5', color: '#065F46', text: '✓ Inkludert' },
+                          manual: { bg: '#DCFCE7', color: '#166534', text: '✓ Manuelt inkludert' },
                         }[state]
                         return (
                           <div
                             key={p.id}
                             onClick={() => handleToggleIncluded(p.id)}
                             className="cursor-pointer rounded-lg p-2 text-center transition-all"
-                            style={{ background: boxStyle.bg, border: boxStyle.border, opacity: p.included ? 1 : 0.6 }}
+                            style={{ background: boxStyle.bg, border: boxStyle.border }}
                           >
                             <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
                             <div className="text-xs mt-1 text-slate-600">{agg.total}</div>
@@ -729,6 +729,21 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                           </div>
                         )
                       })}
+                      {excludedProcs.map(p => (
+                        <div
+                          key={p.id}
+                          className="rounded-lg p-2 text-center opacity-50"
+                          style={{ background: '#F8FAFC', border: '2px solid #E2E8F0' }}
+                        >
+                          <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
+                          <div
+                            className="inline-block mt-2 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                            style={{ background: '#E2E8F0', color: '#94A3B8' }}
+                          >
+                            Ikkje inkludert i steg 2
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )
