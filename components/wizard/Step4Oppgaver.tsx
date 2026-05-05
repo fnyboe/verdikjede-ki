@@ -311,19 +311,21 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
             {/* Tab-navigasjon */}
             <div className="flex gap-2 flex-wrap">
-              {vcGroups.map(({ vs }) => {
-                const active = vs.id === activeVcId
+              {vcGroups.map((group) => {
+                const active = group.vs.id === activeVcId
+                const isDone = group.procs.every(p => (tasks[p.id] ?? []).length > 0)
                 return (
                   <button
-                    key={vs.id}
-                    onClick={() => { setActiveVcId(vs.id); setOpenId(null) }}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                    key={group.vs.id}
+                    onClick={() => { setActiveVcId(group.vs.id); setOpenId(null) }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border-2 transition-colors ${
                       active
                         ? 'bg-[#059669] text-white border-[#059669]'
                         : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    {vs.name}
+                    {isDone && <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />}
+                    {group.vs.name}
                   </button>
                 )
               })}
