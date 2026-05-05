@@ -33,27 +33,26 @@ export async function saveVcSteps(
   const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id))
   const newIds = new Set(filled.filter((s) => s.id).map((s) => s.id as string))
 
+  // Slett rader som ikkje lenger er i lista (batch)
   const idsToDelete = Array.from(existingIds).filter((id) => !newIds.has(id))
   if (idsToDelete.length > 0) {
     const { error } = await supabase.from('vc_steps').delete().in('id', idsToDelete)
     if (error) return { success: false, error: error.message }
   }
 
-  for (let i = 0; i < filled.length; i++) {
-    const s = filled[i]
-    if (s.id) {
-      const { error } = await supabase
-        .from('vc_steps')
-        .update({ name: s.name, order_index: i })
-        .eq('id', s.id)
-      if (error) return { success: false, error: error.message }
-    } else {
-      const { error } = await supabase
-        .from('vc_steps')
-        .insert({ analysis_id: analysisId, name: s.name, order_index: i })
-      if (error) return { success: false, error: error.message }
-    }
-  }
+  // Upsert alle steg i éin operasjon
+  const toUpsert = filled.map((s, i) => ({
+    ...(s.id ? { id: s.id } : {}),
+    analysis_id: analysisId,
+    name: s.name,
+    order_index: i,
+  }))
+
+  const { error: upsertError } = await supabase
+    .from('vc_steps')
+    .upsert(toUpsert, { onConflict: 'id' })
+
+  if (upsertError) return { success: false, error: upsertError.message }
 
   return { success: true }
 }
