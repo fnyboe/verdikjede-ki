@@ -48,6 +48,7 @@ Denne fila lesast automatisk av Claude Code ved oppstart. Følg alltid desse pri
 - `profiles`: admin ser alle, company/member ser kun eigen bedrift
 - `companies`: admin ser alle, company/member ser kun seg sjølv
 - Alle entitetar knytt til ein analyse (vc_steps, processes, bxt_scores, tasks) arvar tilgang frå `analyses`
+- `processes`-tabellen har kolonne `manually_excluded boolean NOT NULL DEFAULT false` – legg alltid denne med ved INSERT/UPDATE på prosessar
 
 ---
 
@@ -73,6 +74,7 @@ Denne fila lesast automatisk av Claude Code ved oppstart. Følg alltid desse pri
 - Alle asynkrone operasjonar har loading-tilstand synleg for brukar
 - Alle `try/catch`-blokkar loggar feil og returnerer meiningsfull feilmelding
 - Viss AI-funksjonen feiler: vis feilmelding, men la resten av appen fungere normalt
+- **Unntak:** `createAnalyseAction()` brukar `redirect()` ved suksess – dette er eit godkjent Next.js-mønster og returnerer aldri ein `{ success: true }`-verdi. Bruk `useFormState` og sjekk berre feilstaten.
 
 ---
 
@@ -86,7 +88,7 @@ Denne fila lesast automatisk av Claude Code ved oppstart. Følg alltid desse pri
 - Feil: vis raud feilboks, la brukaren prøve igjen
 
 ### Steg 3 – KI-forslag per prosessteg (automatisk)
-- Triggerast **automatisk** første gong eit accordion opnast
+- Triggerast første gong eit accordion opnast **manuelt av brukar** – aldri automatisk ved mount
 - **Hopar over** viss `problem_desc` eller `usecase_desc` allereie finst i DB
 - Output: JSON `{ problem: string, ideas: string }` – fyllast i tekstfelta
 - **Cachast i `processes.ai_suggestion`** – hentast frå DB ved neste opning
@@ -180,6 +182,7 @@ verdikjede-ki/
       LogoutButton.tsx
   lib/
     constants.ts          ← DIMS, BXT_CATS, STRATS – aldri dupliser
+    utils.ts              ← delte hjelpefunksjonar (getStratKey, osv.)
     db/
       analyses.ts
       companies.ts
