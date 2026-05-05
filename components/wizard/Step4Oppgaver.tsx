@@ -539,13 +539,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                             </td>
                             <td className="py-1.5 pr-4 align-middle">
                               <span className="flex items-center gap-1 min-w-0">
-                                <input
-                                  type="text"
-                                  value={task.name}
-                                  onChange={e => handleUpdateTaskLocal(task.id, p.id, 'name', e.target.value)}
-                                  onBlur={() => handleSaveTask(task.id, p.id)}
-                                  className="flex-1 min-w-0 font-semibold text-[#1E293B] bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
-                                />
+                                <span className="flex-1 min-w-0 font-semibold text-[#1E293B]">{task.name}</span>
                                 <InfoTooltip
                                   automationReason={task.automation_reason}
                                   improvementReason={task.improvement_reason}
@@ -553,36 +547,16 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                               </span>
                             </td>
                             <td className="py-1.5 pr-3 align-middle text-center">
-                              <select
-                                value={task.automation}
-                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'automation', Number(e.target.value))}
-                                onBlur={() => handleSaveTask(task.id, p.id)}
-                                className="w-12 py-0.5 border border-slate-200 rounded text-xs text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer text-slate-600"
-                              >
-                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                              </select>
+                              <span className="font-semibold text-slate-600">{task.automation}</span>
                             </td>
                             <td className="py-1.5 pr-3 align-middle text-center">
-                              <select
-                                value={task.improvement}
-                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'improvement', Number(e.target.value))}
-                                onBlur={() => handleSaveTask(task.id, p.id)}
-                                className="w-12 py-0.5 border border-slate-200 rounded text-xs text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer text-slate-600"
-                              >
-                                {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
-                              </select>
+                              <span className="font-semibold text-slate-600">{task.improvement}</span>
                             </td>
                             <td className="py-1.5 pr-4 align-middle text-center">
                               <span className="inline-block px-1.5 py-0.5 rounded text-xs font-bold" style={{ background: sc.bg, color: sc.text }}>{sc.s}</span>
                             </td>
                             <td className="py-1.5 align-middle hidden lg:table-cell">
-                              <input
-                                type="text"
-                                value={task.tech}
-                                onChange={e => handleUpdateTaskLocal(task.id, p.id, 'tech', e.target.value)}
-                                onBlur={() => handleSaveTask(task.id, p.id)}
-                                className="w-full text-slate-500 bg-transparent border border-transparent hover:border-slate-200 focus:border-slate-300 rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#10B981] focus:bg-white"
-                              />
+                              <span className="text-slate-500">{task.tech}</span>
                             </td>
                           </tr>
                         )
