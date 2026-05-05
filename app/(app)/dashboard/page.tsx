@@ -1,28 +1,22 @@
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysesByCompany, getAllAnalyses } from '@/lib/db/analyses'
+import { getCurrentProfile } from '@/lib/db/users'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Analysis } from '@/types'
 
 export default async function DashboardPage() {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) redirect('/login')
+  const profile = profileResult.data!
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', user.id)
-    .single()
-
-  const isAdmin = profile?.role === 'admin'
+  const isAdmin = profile.role === 'admin'
 
   let analyses: Analysis[] = []
 
   if (isAdmin) {
     const result = await getAllAnalyses()
     if (result.success && result.data) analyses = result.data
-  } else if (profile?.company_id) {
+  } else if (profile.company_id) {
     const result = await getAnalysesByCompany(profile.company_id)
     if (result.success && result.data) analyses = result.data
   }

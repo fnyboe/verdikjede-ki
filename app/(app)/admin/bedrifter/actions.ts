@@ -1,7 +1,7 @@
 'use server'
 
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getCurrentProfile } from '@/lib/db/users'
 import type { ServerActionResult } from '@/types'
 
 export async function inviteCompany(
@@ -11,17 +11,11 @@ export async function inviteCompany(
   const companyName = (formData.get('companyName') as string).trim()
   const email = (formData.get('email') as string).trim()
 
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'admin') return { success: false, error: 'Ikkje tilgang' }
+  if (profile.role !== 'admin') return { success: false, error: 'Ikkje tilgang' }
 
   const admin = createSupabaseAdminClient()
 

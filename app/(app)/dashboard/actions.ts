@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getCurrentProfile } from '@/lib/db/users'
 import type { ServerActionResult } from '@/types'
 
 export async function inviteMember(
@@ -10,19 +11,14 @@ export async function inviteMember(
 ): Promise<ServerActionResult> {
   const email = (formData.get('email') as string).trim()
 
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, company_id')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.company_id) return { success: false, error: 'Ingen bedrift knytt til kontoen' }
+  if (!profile.company_id) return { success: false, error: 'Ingen bedrift knytt til kontoen' }
   if (profile.role === 'admin') return { success: false, error: 'Admin kan ikkje invitere via dashboard' }
 
+  const supabase = createSupabaseServerClient()
   const { count } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })

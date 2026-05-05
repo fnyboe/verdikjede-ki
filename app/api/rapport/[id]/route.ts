@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import React from 'react'
 import { renderToBuffer, type DocumentProps } from '@react-pdf/renderer'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
 import { getCompanyById } from '@/lib/db/companies'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
 import { getProcessesByAnalysis } from '@/lib/db/processes'
 import { getTasksByAnalysis } from '@/lib/db/tasks'
+import { getCurrentProfile } from '@/lib/db/users'
 import { RapportDocument } from '@/lib/pdf/rapport'
 
 export async function GET(
@@ -15,15 +15,11 @@ export async function GET(
 ) {
   const { id } = params
 
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Ikkje innlogga' }, { status: 401 })
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) {
+    return NextResponse.json({ error: 'Ikkje innlogga' }, { status: 401 })
+  }
+  const profile = profileResult.data
 
   const analysisResult = await getAnalysisById(id)
   if (!analysisResult.success || !analysisResult.data) {
@@ -31,7 +27,7 @@ export async function GET(
   }
   const analysis = analysisResult.data
 
-  if (analysis.company_id !== profile?.company_id) {
+  if (analysis.company_id !== profile.company_id) {
     return NextResponse.json({ error: 'Ingen tilgang' }, { status: 403 })
   }
 

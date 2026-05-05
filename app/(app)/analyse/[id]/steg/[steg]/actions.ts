@@ -5,29 +5,25 @@ import { saveVcSteps } from '@/lib/db/vc_steps'
 import { getProcessesByVcStep, saveProcesses, saveWeights, updateProcessDesc, saveBxtData, saveProcessIncluded } from '@/lib/db/processes'
 import { getTasksByProcess, saveTasks, deleteTask, updateTask } from '@/lib/db/tasks'
 import { saveStrategy, saveCompanyInfo } from '@/lib/db/analyses'
+import { getCurrentProfile } from '@/lib/db/users'
 import type { Process, Task, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
   analyseId: string,
   steg: { id?: string, name: string }[]
 ): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
+
   const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', analyseId)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
@@ -44,23 +40,18 @@ export async function saveProcessesAction(
   vcStepId: string,
   items: { name: string; scores: Record<string, number>; included: boolean; manually_excluded: boolean; ai_suggestion: string | null }[]
 ): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
+
   const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', analyseId)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
@@ -70,19 +61,18 @@ export async function saveProcessesAction(
 export async function getProcessesForVcStepAction(
   vcStepId: string
 ): Promise<ServerActionResult<Process[]>> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success) return { success: false, error: 'Ikkje innlogga' }
   return getProcessesByVcStep(vcStepId)
 }
 
 export async function getWeightsAction(
   analyseId: string
 ): Promise<ServerActionResult<Record<string, number>>> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success) return { success: false, error: 'Ikkje innlogga' }
 
+  const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
     .from('analyses')
     .select('weights')
@@ -99,10 +89,11 @@ export async function saveProcessDescAction(
   usecaseDesc: string,
   aiSuggestion: string | null
 ): Promise<ServerActionResult> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
+  const supabase = createSupabaseServerClient()
   const { data: process } = await supabase
     .from('processes')
     .select('analysis_id')
@@ -111,19 +102,13 @@ export async function saveProcessDescAction(
 
   if (!process) return { success: false, error: 'Prosess ikkje funnen' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', process.analysis_id)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang' }
   }
 
@@ -142,10 +127,11 @@ export async function saveBxtDataAction(
     ai_suggestion: string | null
   }
 ): Promise<ServerActionResult> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
+  const supabase = createSupabaseServerClient()
   const { data: process } = await supabase
     .from('processes')
     .select('analysis_id')
@@ -154,19 +140,13 @@ export async function saveBxtDataAction(
 
   if (!process) return { success: false, error: 'Prosess ikkje funnen' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', process.analysis_id)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang' }
   }
 
@@ -177,10 +157,11 @@ export async function saveProcessIncludedAction(
   processId: string,
   included: boolean
 ): Promise<ServerActionResult> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
+  const supabase = createSupabaseServerClient()
   const { data: process } = await supabase
     .from('processes')
     .select('analysis_id')
@@ -189,19 +170,13 @@ export async function saveProcessIncludedAction(
 
   if (!process) return { success: false, error: 'Prosess ikkje funnen' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', process.analysis_id)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang' }
   }
 
@@ -212,23 +187,18 @@ export async function saveWeightsAction(
   analyseId: string,
   weights: Record<string, number>
 ): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
+
   const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', analyseId)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
@@ -238,9 +208,8 @@ export async function saveWeightsAction(
 export async function getTasksByProcessAction(
   processId: string
 ): Promise<ServerActionResult<Task[]>> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success) return { success: false, error: 'Ikkje innlogga' }
   return getTasksByProcess(processId)
 }
 
@@ -248,10 +217,11 @@ export async function saveTasksAction(
   processId: string,
   tasks: { name: string; automation: number; automation_reason: string; improvement: number; improvement_reason: string; tech: string }[]
 ): Promise<ServerActionResult<Task[]>> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
 
+  const supabase = createSupabaseServerClient()
   const { data: process } = await supabase
     .from('processes')
     .select('analysis_id')
@@ -259,19 +229,13 @@ export async function saveTasksAction(
     .single()
   if (!process) return { success: false, error: 'Prosess ikkje funnen' }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', process.analysis_id)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang' }
   }
 
@@ -279,9 +243,8 @@ export async function saveTasksAction(
 }
 
 export async function deleteTaskAction(taskId: string): Promise<ServerActionResult> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success) return { success: false, error: 'Ikkje innlogga' }
   return deleteTask(taskId)
 }
 
@@ -289,23 +252,18 @@ export async function saveStrategyAction(
   analyseId: string,
   data: { vc_control: string; tech_breadth: string; strategy_text: string | null }
 ): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
+
   const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', analyseId)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
@@ -316,23 +274,18 @@ export async function saveCompanyInfoAction(
   analyseId: string,
   data: { company_name: string; logo_base64: string | null; company_description: string; website_url: string }
 ): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  const profile = profileResult.data
+
   const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('company_id')
-    .eq('id', user.id)
-    .single()
-
   const { data: analyse } = await supabase
     .from('analyses')
     .select('company_id')
     .eq('id', analyseId)
     .single()
 
-  if (!analyse || analyse.company_id !== profile?.company_id) {
+  if (!analyse || analyse.company_id !== profile.company_id) {
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
@@ -343,8 +296,7 @@ export async function updateTaskAction(
   taskId: string,
   fields: Partial<{ name: string; automation: number; automation_reason: string; improvement: number; improvement_reason: string; tech: string }>
 ): Promise<ServerActionResult> {
-  const supabase = createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { success: false, error: 'Ikkje innlogga' }
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success) return { success: false, error: 'Ikkje innlogga' }
   return updateTask(taskId, fields)
 }
