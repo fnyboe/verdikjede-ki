@@ -700,9 +700,10 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
                       {includedProcs.map(p => {
-                        const agg = bxtAgg((entries[p.id]?.bxt_scores ?? {}) as Record<string, number | string>)
-                        const autoIncl = agg.total >= 4
-                        const state = autoIncl ? 'auto' : 'manual'
+                        const rawBxt = entries[p.id]?.bxt_scores
+                        const hasBxtScores = rawBxt !== undefined && Object.keys(rawBxt).length > 0
+                        const agg = bxtAgg((rawBxt ?? {}) as Record<string, number | string>)
+                        const state = !hasBxtScores ? 'auto' : agg.total >= 4 ? 'auto' : 'manual'
                         const boxStyle = {
                           auto:   { bg: '#D1FAE5', border: '2px solid #10B981' },
                           manual: { bg: '#F0FDF4', border: '2px dashed #10B981' },
