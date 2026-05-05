@@ -284,7 +284,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
   const allTasks = includedProcs.flatMap(p => tasks[p.id] ?? [])
   const allIncludedOpened = processes
     .filter(p => p.included ?? false)
-    .every(p => openedProcessIds.has(p.id))
+    .every(p => openedProcessIds.has(p.id) || (tasks[p.id] ?? []).length > 0)
 
   return (
     <div className="flex flex-col gap-6">
