@@ -13,10 +13,13 @@ export async function getVcStepsByAnalysis(analysisId: string): Promise<ServerAc
   return { success: true, data: data as VcStep[] }
 }
 
-export async function saveVcSteps(analysisId: string, names: string[]): Promise<ServerActionResult> {
+export async function saveVcSteps(
+  analysisId: string,
+  steg: { id?: string, name: string }[]
+): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
 
-  const filled = names.map((n) => n.trim()).filter((n) => n.length > 0)
+  const filled = steg.filter((s) => s.name.trim().length > 0)
   if (filled.length === 0) return { success: false, error: 'Ingen gyldige steg' }
 
   const { data: existing, error: fetchError } = await supabase
@@ -27,30 +30,29 @@ export async function saveVcSteps(analysisId: string, names: string[]): Promise<
 
   if (fetchError) return { success: false, error: fetchError.message }
 
-  const existingRows = (existing ?? []) as { id: string }[]
+  const existingIds = new Set((existing ?? []).map((r: { id: string }) => r.id))
+  const newIds = new Set(filled.filter((s) => s.id).map((s) => s.id as string))
 
-  for (let i = 0; i < Math.min(filled.length, existingRows.length); i++) {
-    const { error } = await supabase
-      .from('vc_steps')
-      .update({ name: filled[i], order_index: i })
-      .eq('id', existingRows[i].id)
-    if (error) return { success: false, error: error.message }
-  }
-
-  if (filled.length > existingRows.length) {
-    const newRows = filled.slice(existingRows.length).map((name, j) => ({
-      analysis_id: analysisId,
-      name,
-      order_index: existingRows.length + j,
-    }))
-    const { error } = await supabase.from('vc_steps').insert(newRows)
-    if (error) return { success: false, error: error.message }
-  }
-
-  if (existingRows.length > filled.length) {
-    const idsToDelete = existingRows.slice(filled.length).map((r) => r.id)
+  const idsToDelete = Array.from(existingIds).filter((id) => !newIds.has(id))
+  if (idsToDelete.length > 0) {
     const { error } = await supabase.from('vc_steps').delete().in('id', idsToDelete)
     if (error) return { success: false, error: error.message }
+  }
+
+  for (let i = 0; i < filled.length; i++) {
+    const s = filled[i]
+    if (s.id) {
+      const { error } = await supabase
+        .from('vc_steps')
+        .update({ name: s.name, order_index: i })
+        .eq('id', s.id)
+      if (error) return { success: false, error: error.message }
+    } else {
+      const { error } = await supabase
+        .from('vc_steps')
+        .insert({ analysis_id: analysisId, name: s.name, order_index: i })
+      if (error) return { success: false, error: error.message }
+    }
   }
 
   return { success: true }

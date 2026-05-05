@@ -34,8 +34,8 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   const router = useRouter()
   const harEksisterande = eksisterendeSteg.length > 0
 
-  const [steg, setSteg] = useState<string[]>(
-    harEksisterande ? eksisterendeSteg.map((s) => s.name) : ['', '']
+  const [steg, setSteg] = useState<{ id?: string, name: string }[]>(
+    harEksisterande ? eksisterendeSteg.map((s) => ({ id: s.id, name: s.name })) : [{ name: '' }, { name: '' }]
   )
   const [beskrivelse, setBeskrivelse] = useState(analysis.company_description ?? '')
   const [url, setUrl] = useState(analysis.website_url ?? '')
@@ -49,7 +49,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   const [logoDataUri, setLogoDataUri] = useState<string | null>(analysis.logo_base64 ?? null)
   const [logoError, setLogoError] = useState<string | null>(null)
 
-  const filledCount = steg.filter((s) => s.trim().length > 0).length
+  const filledCount = steg.filter((s) => s.name.trim().length > 0).length
   const kanGaaNeste = filledCount >= 2
 
   async function handleSaveCompanyInfo(name: string, logo: string | null) {
@@ -108,7 +108,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
         return
       }
 
-      setSteg(json.steps as string[])
+      setSteg((json.steps as string[]).map(name => ({ name })))
     } catch {
       setAiError('Kunne ikkje kontakte AI-tenesta')
     } finally {
@@ -117,15 +117,20 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   }
 
   function oppdaterSteg(i: number, value: string) {
-    setSteg((prev) => prev.map((s, idx) => (idx === i ? value : s)))
+    setSteg((prev) => prev.map((s, idx) => (idx === i ? { ...s, name: value } : s)))
   }
 
   function fjernSteg(i: number) {
+    const harData = steg[i].id !== undefined
+    if (harData) {
+      const ok = window.confirm('Dette vil slette alle prosessar og oppgåver under dette steget. Er du sikker?')
+      if (!ok) return
+    }
     setSteg((prev) => prev.filter((_, idx) => idx !== i))
   }
 
   function leggTilSteg() {
-    setSteg((prev) => [...prev, ''])
+    setSteg((prev) => [...prev, { name: '' }])
   }
 
   async function handleNeste() {
@@ -257,7 +262,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
               <span className="text-xs font-bold text-slate-400 w-6 text-right shrink-0">{i + 1}</span>
               <input
                 type="text"
-                value={s}
+                value={s.name}
                 onChange={(e) => oppdaterSteg(i, e.target.value)}
                 placeholder={`Steg ${i + 1}`}
                 className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"

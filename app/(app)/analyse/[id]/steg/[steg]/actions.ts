@@ -9,7 +9,7 @@ import type { Process, Task, ServerActionResult } from '@/types'
 
 export async function saveVcStepsAction(
   analyseId: string,
-  names: string[]
+  steg: { id?: string, name: string }[]
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -31,12 +31,12 @@ export async function saveVcStepsAction(
     return { success: false, error: 'Ingen tilgang til denne analysen' }
   }
 
-  const filled = names.filter((n) => n.trim().length > 0)
+  const filled = steg.filter((s) => s.name.trim().length > 0)
   if (filled.length < 2) {
     return { success: false, error: 'Minimum 2 steg er påkravd' }
   }
 
-  return saveVcSteps(analyseId, names)
+  return saveVcSteps(analyseId, steg)
 }
 
 export async function saveProcessesAction(
