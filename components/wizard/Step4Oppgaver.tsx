@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   getProcessesForVcStepAction,
+  getTasksByProcessAction,
   saveTasksAction,
   deleteTaskAction,
   updateTaskAction,
@@ -209,6 +210,12 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
     const hasTasks = (tasks[processId]?.length ?? 0) > 0
     if (hasTasks) return
+
+    const dbResult = await getTasksByProcessAction(processId)
+    if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
+      setTasks(prev => ({ ...prev, [processId]: dbResult.data! }))
+      return
+    }
 
     setAiGenerating(true)
     try {
