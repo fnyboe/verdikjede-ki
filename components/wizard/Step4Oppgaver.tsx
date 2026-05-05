@@ -295,7 +295,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
               <div>
                 <h3 className="text-base font-bold text-[#1E293B]">Oppgåver per prosess</h3>
-                <p className="text-xs text-slate-500 mt-0.5">KI-genererte oppgåveforslag. Rediger eller slett etter behov.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Opne kvar verdikjede og prosess for å generere KI-forslag til oppgåver. Rediger eller slett etter behov.</p>
               </div>
             </div>
 
