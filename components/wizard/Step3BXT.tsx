@@ -9,6 +9,7 @@ import {
   saveProcessIncludedAction,
 } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/Spinner'
 import type { VcStep, Process } from '@/types'
 
 interface BxtEntry {
@@ -404,10 +405,7 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
     <div className="flex flex-col gap-6">
       {isLoadingFromDB ? (
         <div className="bg-white rounded-xl border border-slate-200 p-8 flex items-center gap-2">
-          <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
+          <Spinner />
           <p className="text-sm font-medium text-[#10B981]">Lastar prosessar...</p>
         </div>
       ) : processes.length === 0 ? (
@@ -523,10 +521,7 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                     <div className="bg-white">
                       {isAiLoading && (
                         <div className="flex items-center gap-2 px-5 py-4 border-b border-slate-100">
-                          <svg className="animate-spin h-4 w-4 text-[#10B981] shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                          </svg>
+                          <Spinner />
                           <p className="text-sm font-medium text-[#10B981]">Genererer KI-forslag...</p>
                         </div>
                       )}
