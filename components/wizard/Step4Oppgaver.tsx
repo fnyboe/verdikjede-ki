@@ -162,7 +162,12 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         vcSteps.find(vs => allProcs.some(p => p.vc_step_id === vs.id))
       if (firstVc) setActiveVcId(firstVc.id)
       setProcesses(allProcs)
-      setTasks({})
+      const taskResults = await Promise.all(allProcs.map(p => getTasksByProcessAction(p.id)))
+      const taskMap: Record<string, Task[]> = {}
+      allProcs.forEach((p, i) => {
+        taskMap[p.id] = taskResults[i].success ? (taskResults[i].data ?? []) : []
+      })
+      setTasks(taskMap)
       setIsLoadingFromDB(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
