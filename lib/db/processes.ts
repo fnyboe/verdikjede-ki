@@ -28,7 +28,7 @@ export async function getProcessesByVcStep(vcStepId: string): Promise<ServerActi
 export async function saveProcesses(
   vcStepId: string,
   analysisId: string,
-  items: { name: string; scores: Record<string, number>; included: boolean; ai_suggestion: string | null }[]
+  items: { name: string; scores: Record<string, number>; included: boolean; manually_excluded: boolean; ai_suggestion: string | null }[]
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
 
@@ -39,6 +39,7 @@ export async function saveProcesses(
       name: item.name.trim(),
       scores: item.scores,
       included: item.included,
+      manually_excluded: item.manually_excluded,
       order_index: i,
       ai_suggestion: item.ai_suggestion ?? null,
     }))
@@ -62,6 +63,7 @@ export async function saveProcesses(
         name: rows[i].name,
         scores: rows[i].scores,
         included: rows[i].included,
+        manually_excluded: rows[i].manually_excluded,
         order_index: rows[i].order_index,
         ai_suggestion: rows[i].ai_suggestion,
       })

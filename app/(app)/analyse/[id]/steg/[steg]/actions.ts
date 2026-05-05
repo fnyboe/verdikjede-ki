@@ -42,7 +42,7 @@ export async function saveVcStepsAction(
 export async function saveProcessesAction(
   analyseId: string,
   vcStepId: string,
-  items: { name: string; scores: Record<string, number>; included: boolean; ai_suggestion: string | null }[]
+  items: { name: string; scores: Record<string, number>; included: boolean; manually_excluded: boolean; ai_suggestion: string | null }[]
 ): Promise<ServerActionResult> {
   const supabase = createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()

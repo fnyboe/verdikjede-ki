@@ -12,6 +12,7 @@ interface ProcessRow {
   name: string
   scores: Record<string, number>
   included: boolean
+  manually_excluded: boolean
   ai_suggestion: string | null
 }
 
@@ -54,10 +55,12 @@ function toRows(processes: Process[], weights: Record<string, number>, allDims: 
     const scores = Object.fromEntries(
       allDims.map((d) => [d.key, typeof p.scores?.[d.key] === 'number' ? p.scores[d.key] : 3])
     )
+    const manuallyExcluded = p.manually_excluded ?? false
     return {
       name: p.name,
       scores,
-      included: typeof p.included === 'boolean' ? p.included : autoIncluded(scores, weights, allDims),
+      manually_excluded: manuallyExcluded,
+      included: manuallyExcluded ? false : autoIncluded(scores, weights, allDims),
       ai_suggestion: p.ai_suggestion ?? null,
     }
   })
@@ -262,7 +265,7 @@ export function Step2Prosessscoring({
         if (res.ok && Array.isArray(json.processes)) {
           generated = (json.processes as string[]).map((name) => {
             const scores = defaultScores(allDims)
-            return { name, scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: 'steg2' }
+            return { name, scores, manually_excluded: false, included: autoIncluded(scores, weights, allDims), ai_suggestion: 'steg2' }
           })
           setRows((prev) => ({ ...prev, [vsId]: generated }))
         }
@@ -291,7 +294,7 @@ export function Step2Prosessscoring({
     const updated = (rows[vsId] ?? []).map((r, idx) => {
       if (idx !== i) return r
       const newScores = { ...r.scores, [dimKey]: value }
-      return { ...r, scores: newScores, included: autoIncluded(newScores, weights, allDims) }
+      return { ...r, scores: newScores, included: r.manually_excluded ? false : autoIncluded(newScores, weights, allDims) }
     })
     setRows((prev) => ({ ...prev, [vsId]: updated }))
     await saveCurrentTab(vsId, updated)
@@ -301,7 +304,7 @@ export function Step2Prosessscoring({
     const scores = defaultScores(allDims)
     setRows((prev) => ({
       ...prev,
-      [vsId]: [...prev[vsId], { name: '', scores, included: autoIncluded(scores, weights, allDims), ai_suggestion: null }],
+      [vsId]: [...prev[vsId], { name: '', scores, manually_excluded: false, included: autoIncluded(scores, weights, allDims), ai_suggestion: null }],
     }))
   }
 
@@ -312,7 +315,15 @@ export function Step2Prosessscoring({
   }
 
   async function toggleProcessIncluded(vsId: string, i: number) {
-    const updated = (rows[vsId] ?? []).map((r, idx) => idx === i ? { ...r, included: !r.included } : r)
+    const updated = (rows[vsId] ?? []).map((r, idx) => {
+      if (idx !== i) return r
+      const nowExcluded = r.included
+      return {
+        ...r,
+        manually_excluded: nowExcluded,
+        included: nowExcluded ? false : autoIncluded(r.scores, weights, allDims),
+      }
+    })
     setRows((prev) => ({ ...prev, [vsId]: updated }))
     await saveCurrentTab(vsId, updated)
   }
@@ -324,7 +335,7 @@ export function Step2Prosessscoring({
       Object.fromEntries(
         Object.entries(prev).map(([vsId, vsRows]) => [
           vsId,
-          vsRows.map((r) => ({ ...r, included: autoIncluded(r.scores, newWeights, allDims) })),
+          vsRows.map((r) => ({ ...r, included: r.manually_excluded ? false : autoIncluded(r.scores, newWeights, allDims) })),
         ])
       )
     )

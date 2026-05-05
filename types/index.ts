@@ -38,6 +38,7 @@ export interface Process {
   order_index: number
   scores: Record<string, number>
   included: boolean
+  manually_excluded: boolean
   problem_desc: string | null
   usecase_desc: string | null
   business_goal: string | null
