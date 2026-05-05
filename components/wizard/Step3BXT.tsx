@@ -691,15 +691,30 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
               {vcSteps.map(vs => {
                 const vsProcs = processes.filter(p => p.vc_step_id === vs.id)
                 if (!vsProcs.length) return null
-                const includedProcs = vsProcs.filter(p => p.included)
-                const excludedProcs = vsProcs.filter(p => !p.included)
                 return (
                   <div key={vs.id} className="flex flex-col gap-2">
                     <div className="text-center text-sm font-bold text-[#1E293B] py-1 border-b border-slate-200">
                       {vs.name}
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-                      {includedProcs.map(p => {
+                      {vsProcs.map(p => {
+                        if (!p.included) {
+                          return (
+                            <div
+                              key={p.id}
+                              className="rounded-lg p-2 text-center opacity-50"
+                              style={{ background: '#F8FAFC', border: '2px solid #E2E8F0' }}
+                            >
+                              <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
+                              <div
+                                className="inline-block mt-2 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                style={{ background: '#E2E8F0', color: '#94A3B8' }}
+                              >
+                                Ikkje inkludert i steg 2
+                              </div>
+                            </div>
+                          )
+                        }
                         const rawBxt = entries[p.id]?.bxt_scores
                         const hasBxtScores = rawBxt !== undefined && Object.keys(rawBxt).length > 0
                         const agg = bxtAgg((rawBxt ?? {}) as Record<string, number | string>)
@@ -730,21 +745,6 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                           </div>
                         )
                       })}
-                      {excludedProcs.map(p => (
-                        <div
-                          key={p.id}
-                          className="rounded-lg p-2 text-center opacity-50"
-                          style={{ background: '#F8FAFC', border: '2px solid #E2E8F0' }}
-                        >
-                          <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
-                          <div
-                            className="inline-block mt-2 px-1.5 py-0.5 rounded text-[10px] font-bold"
-                            style={{ background: '#E2E8F0', color: '#94A3B8' }}
-                          >
-                            Ikkje inkludert i steg 2
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )
