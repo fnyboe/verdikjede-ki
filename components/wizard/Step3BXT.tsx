@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { BXT_CATS } from '@/lib/constants'
+import { BXT_CATS, PLOT_COLORS } from '@/lib/constants'
 import {
   getProcessesForVcStepAction,
   saveBxtDataAction,
@@ -29,7 +29,6 @@ interface Props {
 
 const S_KEYS = ['alignment', 'biz_strategy', 'biz_value', 'biz_timeline']
 const F_KEYS = ['exp_personas', 'exp_value', 'exp_resistance', 'tech_risk', 'tech_security', 'tech_fit']
-const PLOT_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 function bxtAgg(bxt: Record<string, number | string>) {
   const sA = S_KEYS.reduce((a, k) => a + Number(bxt[k] ?? 3), 0) / S_KEYS.length

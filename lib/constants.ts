@@ -1,5 +1,7 @@
 import type { Dim, BxtCat, Strat } from '@/types'
 
+export const PLOT_COLORS: string[] = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
+
 export const DIMS: Dim[] = [
   { key: 'operational', label: 'Potensial', tip: 'Variabler:\n• Volum (antall transaksjoner/hendelser)\n• Frekvens (daglig, ukentlig, sporadisk)\n• Kost per enhet / tidsbruk\n• Grad av manuelt arbeid\n👉 Høy score = godt automasjonskandidatur' },
   { key: 'process', label: 'Prosesskarakter', tip: 'Variabler:\n• Regelbasert vs. skjønnsbasert\n• Variasjon i input\n• Standardisering av prosess\n• Antall unntak\n👉 Mer struktur = lettere AI/automatisering' },
