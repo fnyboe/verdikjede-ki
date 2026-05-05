@@ -6,6 +6,7 @@ import { saveStrategyAction } from '@/app/(app)/analyse/[id]/steg/[steg]/actions
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/Spinner'
 import { STRATS } from '@/lib/constants'
+import { getStratKey } from '@/lib/utils'
 import type { Analysis, Task } from '@/types'
 
 interface Props {
@@ -18,12 +19,6 @@ interface Props {
 type VcControl = 'low' | 'high'
 type TechBreadth = 'few' | 'many'
 
-function getStrategyKey(vc: VcControl, tech: TechBreadth): string {
-  if (vc === 'low'  && tech === 'few')  return 'focused'
-  if (vc === 'low'  && tech === 'many') return 'collaborative'
-  if (vc === 'high' && tech === 'few')  return 'vertical'
-  return 'platform'
-}
 
 
 export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks }: Props) {
@@ -44,7 +39,7 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
 
   useEffect(() => {
     if (!vcControl || !techBreadth) return
-    const key = getStrategyKey(vcControl, techBreadth)
+    const key = getStratKey(vcControl, techBreadth)
 
     // Skip if cached text matches current selection
     if (
@@ -99,7 +94,7 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
     }
   }
 
-  const strategyKey = vcControl && techBreadth ? getStrategyKey(vcControl, techBreadth) : null
+  const strategyKey = vcControl && techBreadth ? getStratKey(vcControl, techBreadth) : null
 
   return (
     <div className="flex flex-col gap-6">

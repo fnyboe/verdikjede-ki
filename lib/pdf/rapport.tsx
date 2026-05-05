@@ -1,6 +1,7 @@
 import React from 'react'
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { DIMS, BXT_CATS, STRATS } from '@/lib/constants'
+import { getStratKey } from '@/lib/utils'
 import type { Analysis, VcStep, Process, Task } from '@/types'
 
 export interface RapportData {
@@ -135,13 +136,6 @@ function SectionHeader({ badge, title, subtitle }: { badge: string; title: strin
       </View>
     </View>
   )
-}
-
-function getStratKey(vc: string, tech: string): string {
-  if (vc === 'low' && tech === 'few') return 'focused'
-  if (vc === 'low' && tech === 'many') return 'collaborative'
-  if (vc === 'high' && tech === 'few') return 'vertical'
-  return 'platform'
 }
 
 function formatDate(dateStr: string): string {
