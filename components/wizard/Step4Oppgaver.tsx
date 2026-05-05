@@ -11,21 +11,12 @@ import {
 } from '@/app/(app)/analyse/[id]/steg/[steg]/actions'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/Spinner'
-import type { VcStep, Process, Task } from '@/types'
+import type { VcStep, Process, Task, TaskInput } from '@/types'
 
 interface Props {
   analyseId: string
   analysisTitle: string
   vcSteps: VcStep[]
-}
-
-type TaskInput = {
-  name: string
-  automation: number
-  automation_reason: string
-  improvement: number
-  improvement_reason: string
-  tech: string
 }
 
 function scoreStyle(a: number, i: number) {

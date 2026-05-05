@@ -49,15 +49,18 @@ export interface Process {
   created_at: string
 }
 
-export interface Task {
-  id: string
-  process_id: string
+export type TaskInput = {
   name: string
   automation: number
   automation_reason: string
   improvement: number
   improvement_reason: string
   tech: string
+}
+
+export interface Task extends TaskInput {
+  id: string
+  process_id: string
   created_at: string
 }
 

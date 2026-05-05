@@ -1,14 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import type { Task, ServerActionResult } from '@/types'
-
-type TaskInput = {
-  name: string
-  automation: number
-  automation_reason: string
-  improvement: number
-  improvement_reason: string
-  tech: string
-}
+import type { Task, TaskInput, ServerActionResult } from '@/types'
 
 export async function getTasksByProcess(processId: string): Promise<ServerActionResult<Task[]>> {
   const supabase = createSupabaseServerClient()
