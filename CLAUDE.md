@@ -287,17 +287,35 @@ Etter kvar større endring, sjekk:
 
 ### Auth-flyt
 
-**Vanleg innlogging:** LoginForm → signInWithPassword → middleware sender til /dashboard
+**Vanleg innlogging:**
+1. Brukar fyller ut e-post og passord i `LoginForm`
+2. `signInWithPassword` vert kalla – Supabase set session-cookie
+3. `middleware.ts` fangar opp redirect og sender autentisert brukar til `/dashboard`
+4. Feil (feil passord, ikkje funnen) visast inline i `LoginForm`
 
-**Invitasjonsflyt:**
-1. Admin/bedrift sender invitasjon via `inviteUserByEmail`
-2. Supabase sender e-post med lenke til `/auth/callback?token_hash=...&type=invite`
-3. `/auth/callback/route.ts` handterer `type=invite` og redirectar til `/set-password`
-4. Brukar set passord og sendast til `/dashboard`
+**Invitasjonsflyt (admin inviterer bedrift):**
+1. Admin fyller ut bedriftsnamn + e-post i `app/(app)/admin/bedrifter/actions.ts`
+2. `inviteCompany` oppretter ny rad i `companies`-tabellen via admin-klienten
+3. `inviteUserByEmail` sender invitasjons-e-post med `role: 'company'` og `company_id` i metadata
+4. Brukar klikkar lenke → Supabase redirectar til `/auth/callback?token_hash=...&type=invite`
+5. `route.ts` vekslar token mot sesjon via `verifyOtp`
+6. Redirectar til `/set-password` der brukar set nytt passord
+7. Etter passord-sett sendast brukar til `/dashboard`
+8. Viss noko feiler undervegs: `companies`-rada vert sletta (rollback)
+
+**Invitasjonsflyt (bedrift inviterer intern brukar):**
+1. Bedrift fyller ut e-post i `InviteMemberForm` på `/dashboard`
+2. `inviteMember` sjekkar at bedrifta har færre enn 3 brukarar (`count < 3`)
+3. `inviteUserByEmail` sender invitasjons-e-post med `role: 'member'` og `company_id` i metadata
+4. Resten av flyten er identisk med steg 4–7 over
 
 **Glemt passord:**
-1. `resetPasswordForEmail` med `redirectTo: /auth/callback?type=recovery`
-2. `/auth/callback/route.ts` handterer og redirectar til `/set-password`
+1. Brukar klikkar "Glemt passord?" i `LoginForm` og ser `ForgotPasswordForm`
+2. `resetPasswordForEmail` vert kalla med `redirectTo: .../auth/callback?type=recovery`
+3. Supabase sender e-post med tilbakestillingslenke
+4. Brukar klikkar lenke → `/auth/callback?token_hash=...&type=recovery`
+5. `route.ts` vekslar token og redirectar til `/set-password`
+6. Brukar set nytt passord og sendast til `/dashboard`
 
 ### KRITISKE Supabase-innstillingar (ikkje endre)
 
@@ -326,6 +344,17 @@ Bruk alltid denne prosessen for endringar som ikkje er trivielle:
 
 ---
 
+## 14b. Sjekkliste før commit
+
+Gå gjennom desse punkta før kvar commit:
+- [ ] Ingen migrasjonsfiler er utilsikta inkluderte (`git status` – sjekk `.sql`-filer)
+- [ ] `app/auth/callback/` inneheld kun `route.ts` – ikkje `page.tsx` samtidig
+- [ ] Commit-meldinga er beskrivande: `[type]: [kva og kvifor]`
+- [ ] `.env.local` er ikkje staged
+- [ ] `.claude/settings.local.json` er ikkje staged
+
+---
+
 ## 15. Risikovurdering
 
 | Type endring | Risiko | Test |
@@ -342,14 +371,14 @@ Bruk alltid denne prosessen for endringar som ikkje er trivielle:
 
 *(Oppdaterast etter kvart som funksjonalitet er ferdig og verifisert)*
 
-- [ ] Prosjektoppsett og mappestruktur
-- [ ] Database-migrering og RLS
-- [ ] Autentisering (alle roller)
-- [ ] Dashboard med analyseoversikt
-- [ ] Wizard steg 1–5
-- [ ] AI-funksjonalitet med caching
-- [ ] PDF-rapport
-- [ ] Deploy test
+- [x] Prosjektoppsett og mappestruktur
+- [x] Database-migrering og RLS
+- [x] Autentisering (alle roller)
+- [x] Dashboard med analyseoversikt
+- [x] Wizard steg 1–5
+- [x] AI-funksjonalitet med caching
+- [x] PDF-rapport
+- [x] Deploy test
 - [ ] Deploy prod
 
 ---
