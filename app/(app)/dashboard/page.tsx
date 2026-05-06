@@ -1,5 +1,6 @@
 import { getAnalysesByCompany, getAllAnalyses } from '@/lib/db/analyses'
 import { getCurrentProfile } from '@/lib/db/users'
+import { InviteMemberForm } from './InviteMemberForm'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Analysis } from '@/types'
@@ -77,6 +78,13 @@ export default async function DashboardPage() {
               )}
             </div>
           ))}
+        </div>
+      )}
+      {!isAdmin && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h2 className="text-base font-bold text-[#1E293B] mb-1">Inviter brukar</h2>
+          <p className="text-sm text-slate-500 mb-4">Legg til ein kollega i bedrifta di (maks 3 brukarar totalt).</p>
+          <InviteMemberForm />
         </div>
       )}
     </div>
