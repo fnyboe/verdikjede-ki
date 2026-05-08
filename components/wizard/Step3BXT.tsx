@@ -25,6 +25,7 @@ interface Props {
   analyseId: string
   analysisTitle: string
   vcSteps: VcStep[]
+  isReadOnly: boolean
 }
 
 const S_KEYS = ['alignment', 'biz_strategy', 'biz_value', 'biz_timeline']
@@ -161,7 +162,7 @@ function ScatterPlot({ processes, showLabels }: { processes: PlotProcess[]; show
   )
 }
 
-export function Step3BXT({ analyseId, analysisTitle, vcSteps }: Props) {
+export function Step3BXT({ analyseId, analysisTitle, vcSteps, isReadOnly }: Props) {
   const router = useRouter()
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
 
@@ -334,24 +335,26 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
     setOpenedProcessIds(prev => new Set(Array.from(prev).concat(process.id)))
     setActiveTab(prev => ({ ...prev, [process.id]: prev[process.id] ?? 'problem' }))
 
-    // Step 1: problem/usecase AI
-    const entry = entries[process.id]
-    let problemDesc = entry?.problem_desc || process.problem_desc || ''
-    let usecaseDesc = entry?.usecase_desc || process.usecase_desc || ''
+    if (!isReadOnly) {
+      // Step 1: problem/usecase AI
+      const entry = entries[process.id]
+      let problemDesc = entry?.problem_desc || process.problem_desc || ''
+      let usecaseDesc = entry?.usecase_desc || process.usecase_desc || ''
 
-    if (!problemDesc || !usecaseDesc) {
-      const result = await runAIForProcess(process)
-      if (result) {
-        problemDesc = result.problem
-        usecaseDesc = result.ideas
+      if (!problemDesc || !usecaseDesc) {
+        const result = await runAIForProcess(process)
+        if (result) {
+          problemDesc = result.problem
+          usecaseDesc = result.ideas
+        }
       }
-    }
 
-    // Step 2: BXT scores AI — skip if any score key already set in DB
-    const bxt = (process.bxt_scores ?? {}) as Record<string, number | string>
-    const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
-    if (!bxtScored) {
-      await runAIForScores(process, problemDesc, usecaseDesc)
+      // Step 2: BXT scores AI — skip if any score key already set in DB
+      const bxt = (process.bxt_scores ?? {}) as Record<string, number | string>
+      const bxtScored = S_KEYS.some(k => k in bxt) || F_KEYS.some(k => k in bxt)
+      if (!bxtScored) {
+        await runAIForScores(process, problemDesc, usecaseDesc)
+      }
     }
   }
 
@@ -568,13 +571,14 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                                     onChange={e => setTextField(process.id, field, e.target.value)}
                                     onBlur={() => handleAutoSave(process.id)}
                                     onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px' }}
-                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden"
-                                    style={{ background: isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
+                                    disabled={isReadOnly}
+                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden disabled:bg-slate-50 disabled:text-slate-400"
+                                    style={{ background: isReadOnly ? undefined : isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
                                   />
                                 </>
                               ))}
                             </div>
-                            {showRegenerate && (
+                            {showRegenerate && !isReadOnly && (
                               <Button
                                 onClick={() => handleRegenerateAI(process)}
                                 disabled={isAiLoading}
@@ -605,14 +609,16 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                                         value={String(entry.bxt_scores[`${item.key}_comment`] ?? '')}
                                         onChange={e => setComment(process.id, item.key, e.target.value)}
                                         onBlur={() => handleAutoSave(process.id)}
-                                        className="px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full"
+                                        disabled={isReadOnly}
+                                        className="px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full disabled:text-slate-400"
                                       />
                                       <select
                                         key={`${item.key}-score`}
                                         value={Number(entry.bxt_scores[item.key] ?? 3)}
                                         onChange={e => setScore(process.id, item.key, Number(e.target.value))}
                                         onBlur={() => handleAutoSave(process.id)}
-                                        className="w-full py-1.5 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer"
+                                        disabled={isReadOnly}
+                                        className="w-full py-1.5 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-default"
                                       >
                                         {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                                       </select>
@@ -729,8 +735,8 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                         return (
                           <div
                             key={p.id}
-                            onClick={() => handleToggleIncluded(p.id)}
-                            className="cursor-pointer rounded-lg p-2 text-center transition-all"
+                            onClick={isReadOnly ? undefined : () => handleToggleIncluded(p.id)}
+                            className={`${isReadOnly ? '' : 'cursor-pointer'} rounded-lg p-2 text-center transition-all`}
                             style={{ background: boxStyle.bg, border: boxStyle.border }}
                           >
                             <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(p.name)}</div>
@@ -765,7 +771,7 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
         <div className="flex flex-col items-end gap-1">
           <Button
             onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/4`) }}
-            disabled={!allIncludedOpened}
+            disabled={!isReadOnly && !allIncludedOpened}
             className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
           >
             Neste steg →

@@ -17,6 +17,7 @@ interface Props {
   analyseId: string
   analysisTitle: string
   vcSteps: VcStep[]
+  isReadOnly: boolean
 }
 
 function scoreStyle(a: number, i: number) {
@@ -28,13 +29,14 @@ function scoreStyle(a: number, i: number) {
 
 function ScoreSelect({
   label, tip, value,
-  onChange, onBlur,
+  onChange, onBlur, disabled,
 }: {
   label: string
   tip: string
   value: number
   onChange: (v: number) => void
   onBlur: () => void
+  disabled?: boolean
 }) {
   const [show, setShow] = useState(false)
   return (
@@ -50,7 +52,8 @@ function ScoreSelect({
         value={value}
         onChange={e => onChange(Number(e.target.value))}
         onBlur={onBlur}
-        className="w-12 py-1 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer"
+        disabled={disabled}
+        className="w-12 py-1 border border-slate-200 rounded text-sm text-center font-semibold focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-white cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-default"
       >
         {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
       </select>
@@ -123,7 +126,7 @@ function InfoTooltip({ automationReason, improvementReason }: { automationReason
   )
 }
 
-export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
+export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps, isReadOnly }: Props) {
   const router = useRouter()
   const vcStepNames = Object.fromEntries(vcSteps.map(vs => [vs.id, vs.name]))
 
@@ -207,6 +210,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
 
     const hasTasks = (tasks[processId]?.length ?? 0) > 0
     if (hasTasks) return
+
+    if (isReadOnly) return
 
     const dbResult = await getTasksByProcessAction(processId)
     if (dbResult.success && dbResult.data && dbResult.data.length > 0) {
@@ -389,7 +394,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                     value={task.name}
                                     onChange={e => handleUpdateTaskLocal(task.id, process.id, 'name', e.target.value)}
                                     onBlur={() => handleSaveTask(task.id, process.id)}
-                                    className="flex-1 min-w-0 text-sm font-semibold text-[#1E293B] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#10B981]"
+                                    disabled={isReadOnly}
+                                    className="flex-1 min-w-0 text-sm font-semibold text-[#1E293B] bg-white border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
                                   />
                                   <ScoreSelect
                                     label="Auto"
@@ -397,6 +403,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                     value={task.automation}
                                     onChange={v => handleUpdateTaskLocal(task.id, process.id, 'automation', v)}
                                     onBlur={() => handleSaveTask(task.id, process.id)}
+                                    disabled={isReadOnly}
                                   />
                                   <ScoreSelect
                                     label="Forb."
@@ -404,6 +411,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                     value={task.improvement}
                                     onChange={v => handleUpdateTaskLocal(task.id, process.id, 'improvement', v)}
                                     onBlur={() => handleSaveTask(task.id, process.id)}
+                                    disabled={isReadOnly}
                                   />
                                   <span
                                     className="shrink-0 w-8 text-center py-1 rounded text-xs font-bold"
@@ -418,13 +426,15 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                   >
                                     {isExpanded ? '▲' : '▼'}
                                   </button>
-                                  <button
-                                    onClick={() => handleDeleteTask(task.id, process.id)}
-                                    className="shrink-0 text-slate-400 hover:text-red-500 transition-colors text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
-                                    title="Slett oppgåve"
-                                  >
-                                    ✕
-                                  </button>
+                                  {!isReadOnly && (
+                                    <button
+                                      onClick={() => handleDeleteTask(task.id, process.id)}
+                                      className="shrink-0 text-slate-400 hover:text-red-500 transition-colors text-xs w-6 h-6 flex items-center justify-center rounded hover:bg-red-50"
+                                      title="Slett oppgåve"
+                                    >
+                                      ✕
+                                    </button>
+                                  )}
                                 </div>
 
                                 {/* Nivå 2 – utvida detaljar */}
@@ -440,7 +450,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                         value={task.automation_reason}
                                         onChange={e => handleUpdateTaskLocal(task.id, process.id, 'automation_reason', e.target.value)}
                                         onBlur={() => handleSaveTask(task.id, process.id)}
-                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed"
+                                        disabled={isReadOnly}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed disabled:text-slate-400"
                                       />
                                       <span className="text-xs text-slate-500 font-semibold pt-1.5">Forbetring – kvifor</span>
                                       <textarea
@@ -448,7 +459,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                         value={task.improvement_reason}
                                         onChange={e => handleUpdateTaskLocal(task.id, process.id, 'improvement_reason', e.target.value)}
                                         onBlur={() => handleSaveTask(task.id, process.id)}
-                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed"
+                                        disabled={isReadOnly}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none bg-slate-50 w-full leading-relaxed disabled:text-slate-400"
                                       />
                                       <span className="text-xs text-slate-500 font-semibold pt-1.5">Teknologi</span>
                                       <input
@@ -456,7 +468,8 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
                                         value={task.tech}
                                         onChange={e => handleUpdateTaskLocal(task.id, process.id, 'tech', e.target.value)}
                                         onBlur={() => handleSaveTask(task.id, process.id)}
-                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full"
+                                        disabled={isReadOnly}
+                                        className="px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] bg-slate-50 w-full disabled:text-slate-400"
                                       />
                                     </div>
                                     {savingTask[task.id] && (
@@ -573,7 +586,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps }: Props) {
         <div className="flex flex-col items-end gap-1">
           <Button
             onClick={() => { router.refresh(); router.push(`/analyse/${analyseId}/steg/5`) }}
-            disabled={!allIncludedOpened}
+            disabled={!isReadOnly && !allIncludedOpened}
             className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
           >
             Neste steg →

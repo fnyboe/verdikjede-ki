@@ -10,6 +10,7 @@ interface Props {
   analyseId: string
   eksisterendeSteg: VcStep[]
   analysis: Analysis
+  isReadOnly: boolean
 }
 
 function fileToBase64(file: File): Promise<string> {
@@ -30,7 +31,7 @@ function fileToDataUri(file: File): Promise<string> {
   })
 }
 
-export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props) {
+export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis, isReadOnly }: Props) {
   const router = useRouter()
   const harEksisterande = eksisterendeSteg.length > 0
 
@@ -134,6 +135,10 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
   }
 
   async function handleNeste() {
+    if (isReadOnly) {
+      router.push(`/analyse/${analyseId}/steg/2`)
+      return
+    }
     setSaveError(null)
     setSaving(true)
     const result = await saveVcStepsAction(analyseId, steg)
@@ -163,7 +168,8 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
             onChange={(e) => setCompanyName(e.target.value)}
             onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
             placeholder="Skriv inn bedriftsnamnet..."
-            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+            disabled={isReadOnly}
+            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
           />
         </div>
 
@@ -182,7 +188,8 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
               type="file"
               accept="image/png,image/jpeg"
               onChange={handleLogoChange}
-              className="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+              disabled={isReadOnly}
+              className="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 disabled:opacity-50"
             />
           </div>
           {logoError
@@ -201,7 +208,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
             onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
             placeholder="Beskriv kva selskapet gjer, kva bransje det er i, og kva produkt/tenester det tilbyr..."
             rows={4}
-            disabled={harEksisterande}
+            disabled={isReadOnly || harEksisterande}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] resize-none disabled:bg-slate-50 disabled:text-slate-400"
           />
         </div>
@@ -214,7 +221,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
             onChange={(e) => setUrl(e.target.value)}
             onBlur={() => handleSaveCompanyInfo(companyName, logoDataUri)}
             placeholder="https://eksempel.no"
-            disabled={harEksisterande}
+            disabled={isReadOnly || harEksisterande}
             className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
           />
         </div>
@@ -224,7 +231,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
           <input
             type="file"
             accept="image/*,application/pdf"
-            disabled={harEksisterande}
+            disabled={isReadOnly || harEksisterande}
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             className="text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 disabled:opacity-50"
           />
@@ -243,7 +250,7 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
 
         <Button
           onClick={handleLagForslag}
-          disabled={harEksisterande || aiLoading}
+          disabled={isReadOnly || harEksisterande || aiLoading}
           className="self-start bg-[#1E293B] hover:bg-slate-700 text-white"
         >
           {aiLoading ? 'Genererer forslag...' : '✦ Lag forslag'}
@@ -265,25 +272,30 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis }: Props
                 value={s.name}
                 onChange={(e) => oppdaterSteg(i, e.target.value)}
                 placeholder={`Steg ${i + 1}`}
-                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                disabled={isReadOnly}
+                className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
               />
-              <button
-                onClick={() => fjernSteg(i)}
-                className="text-slate-400 hover:text-red-500 transition-colors px-1"
-                title="Fjern steg"
-              >
-                ✕
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => fjernSteg(i)}
+                  className="text-slate-400 hover:text-red-500 transition-colors px-1"
+                  title="Fjern steg"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           ))}
         </div>
 
-        <button
-          onClick={leggTilSteg}
-          className="self-start text-sm text-[#3B82F6] hover:underline"
-        >
-          + Legg til steg
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={leggTilSteg}
+            className="self-start text-sm text-[#3B82F6] hover:underline"
+          >
+            + Legg til steg
+          </button>
+        )}
       </div>
 
       {saveError && (

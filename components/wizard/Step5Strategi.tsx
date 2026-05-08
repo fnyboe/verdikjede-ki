@@ -14,6 +14,7 @@ interface Props {
   analysisTitle: string
   analysis: Analysis
   initialTasks: Task[]
+  isReadOnly: boolean
 }
 
 type VcControl = 'low' | 'high'
@@ -21,7 +22,7 @@ type TechBreadth = 'few' | 'many'
 
 
 
-export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks }: Props) {
+export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks, isReadOnly }: Props) {
   const router = useRouter()
 
   const [vcControl, setVcControl] = useState<VcControl | null>(
@@ -118,7 +119,8 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
               <button
                 key={v}
                 onClick={() => handleSelect(v, null)}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                disabled={isReadOnly}
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors disabled:cursor-default ${
                   vcControl === v
                     ? 'bg-[#1E293B] text-white border-[#1E293B]'
                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
@@ -139,7 +141,8 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
               <button
                 key={v}
                 onClick={() => handleSelect(null, v)}
-                className={`px-5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors ${
+                disabled={isReadOnly}
+                className={`px-5 py-2.5 rounded-lg text-sm font-semibold border-2 transition-colors disabled:cursor-default ${
                   techBreadth === v
                     ? 'bg-[#1E293B] text-white border-[#1E293B]'
                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'

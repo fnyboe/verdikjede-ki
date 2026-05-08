@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getAnalysisById } from '@/lib/db/analyses'
+import { getCurrentProfile } from '@/lib/db/users'
 import { getVcStepsByAnalysis } from '@/lib/db/vc_steps'
 import { getTasksByAnalysis } from '@/lib/db/tasks'
 import { redirect } from 'next/navigation'
@@ -24,6 +25,10 @@ export default async function StegPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) redirect('/login')
+  const isReadOnly = profileResult.data.role === 'admin'
+
   const stegNr = parseInt(stegParam)
   if (isNaN(stegNr) || stegNr < 1 || stegNr > 5) redirect(`/analyse/${id}/steg/1`)
 
@@ -43,7 +48,7 @@ export default async function StegPage({ params }: Props) {
           <p className="text-sm text-slate-500">{analyse.title}</p>
           <WizardSteps stegNr={stegNr} />
         </div>
-        <Step1Verdikjede key={Date.now()} analyseId={id} eksisterendeSteg={eksisterendeSteg} analysis={analyse} />
+        <Step1Verdikjede key={Date.now()} analyseId={id} eksisterendeSteg={eksisterendeSteg} analysis={analyse} isReadOnly={isReadOnly} />
       </div>
     )
   } else if (stegNr === 2) {
@@ -61,6 +66,7 @@ export default async function StegPage({ params }: Props) {
           analyseId={id}
           analysisTitle={analyse.title}
           vcSteps={vcSteps}
+          isReadOnly={isReadOnly}
         />
       </div>
     )
@@ -79,6 +85,7 @@ export default async function StegPage({ params }: Props) {
           analyseId={id}
           analysisTitle={analyse.title}
           vcSteps={vcSteps}
+          isReadOnly={isReadOnly}
         />
       </div>
     )
@@ -97,6 +104,7 @@ export default async function StegPage({ params }: Props) {
           analyseId={id}
           analysisTitle={analyse.title}
           vcSteps={vcSteps}
+          isReadOnly={isReadOnly}
         />
       </div>
     )
@@ -116,6 +124,7 @@ export default async function StegPage({ params }: Props) {
           analysisTitle={analyse.title}
           analysis={analyse}
           initialTasks={initialTasks}
+          isReadOnly={isReadOnly}
         />
       </div>
     )

@@ -24,6 +24,7 @@ interface Props {
   analyseId: string
   analysisTitle: string
   vcSteps: VcStep[]
+  isReadOnly: boolean
 }
 
 function defaultScores(allDims: Dim[]): Record<string, number> {
@@ -107,6 +108,7 @@ export function Step2Prosessscoring({
   analyseId,
   analysisTitle,
   vcSteps,
+  isReadOnly,
 }: Props) {
   const router = useRouter()
 
@@ -252,7 +254,7 @@ export function Step2Prosessscoring({
     setActiveTab(vsId)
     const currentRows = rows[vsId] ?? []
 
-    if (currentRows.length === 0 && !aiLoading[vsId] && !isLoadingFromDB) {
+    if (currentRows.length === 0 && !aiLoading[vsId] && !isLoadingFromDB && !isReadOnly) {
       setAiLoading((prev) => ({ ...prev, [vsId]: true }))
       let generated: ProcessRow[] = []
       try {
@@ -343,6 +345,11 @@ export function Step2Prosessscoring({
   }
 
   async function handleForrige() {
+    if (isReadOnly) {
+      router.refresh()
+      router.push(`/analyse/${analyseId}/steg/1`)
+      return
+    }
     setSaveError(null)
     setSaving(true)
 
@@ -369,6 +376,11 @@ export function Step2Prosessscoring({
   }
 
   async function handleNeste() {
+    if (isReadOnly) {
+      router.refresh()
+      router.push(`/analyse/${analyseId}/steg/3`)
+      return
+    }
     setSaveError(null)
     setSaving(true)
 
@@ -488,15 +500,18 @@ export function Step2Prosessscoring({
                       }))}
                       onBlur={(e) => void updateName(activeTab, i, e.target.value)}
                       placeholder="Prosessnamn"
-                      className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                      disabled={isReadOnly}
+                      className="flex-1 border border-slate-300 bg-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
                     />
-                    <button
-                      onClick={() => removeRow(activeTab, i)}
-                      className="text-slate-400 hover:text-red-500 transition-colors px-1"
-                      title="Fjern prosess"
-                    >
-                      ✕
-                    </button>
+                    {!isReadOnly && (
+                      <button
+                        onClick={() => removeRow(activeTab, i)}
+                        className="text-slate-400 hover:text-red-500 transition-colors px-1"
+                        title="Fjern prosess"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -508,7 +523,8 @@ export function Step2Prosessscoring({
                         <select
                           value={row.scores[d.key] ?? 3}
                           onChange={(e) => updateScore(activeTab, i, d.key, parseInt(e.target.value))}
-                          className="border border-slate-300 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981]"
+                          disabled={isReadOnly}
+                          className="border border-slate-300 bg-white rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#10B981] disabled:bg-slate-50 disabled:text-slate-400"
                         >
                           {[1, 2, 3, 4, 5].map((v) => (
                             <option key={v} value={v}>{v}</option>
@@ -527,12 +543,14 @@ export function Step2Prosessscoring({
                 </div>
               ))}
 
-              <button
-                onClick={() => addRow(activeTab)}
-                className="self-start text-sm text-[#3B82F6] hover:underline"
-              >
-                + Legg til prosess
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={() => addRow(activeTab)}
+                  className="self-start text-sm text-[#3B82F6] hover:underline"
+                >
+                  + Legg til prosess
+                </button>
+              )}
             </>
           )}
         </div>
@@ -559,7 +577,8 @@ export function Step2Prosessscoring({
                 max={100}
                 value={weights[d.key] ?? 0}
                 onChange={(e) => updateWeight(d.key, parseInt(e.target.value))}
-                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#10B981] w-full"
+                disabled={isReadOnly}
+                className="border border-slate-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#10B981] w-full disabled:bg-slate-50 disabled:text-slate-400"
               />
             </div>
           ))}
@@ -568,7 +587,7 @@ export function Step2Prosessscoring({
           <p className={`text-sm font-medium ${weightsValid ? 'text-emerald-600' : 'text-red-600'}`}>
             Sum: {weightTotal} / 100 {weightsValid ? '✓' : '– må vere 100'}
           </p>
-          {customDims.length < 2 && (
+          {customDims.length < 2 && !isReadOnly && (
             <button
               onClick={() => setShowAddDim((v) => !v)}
               className="text-sm text-[#3B82F6] hover:underline"
@@ -659,8 +678,8 @@ export function Step2Prosessscoring({
                     return (
                       <div
                         key={i}
-                        onClick={() => toggleProcessIncluded(vs.id, i)}
-                        className="cursor-pointer rounded-lg p-2 text-center transition-all"
+                        onClick={isReadOnly ? undefined : () => toggleProcessIncluded(vs.id, i)}
+                        className={`${isReadOnly ? '' : 'cursor-pointer'} rounded-lg p-2 text-center transition-all`}
                         style={{ background: boxStyle.bg, border: boxStyle.border, opacity: row.included ? 1 : 0.6 }}
                       >
                         <div className="text-[11px] font-bold leading-snug text-[#1E293B]">{trunc(row.name)}</div>
@@ -696,7 +715,7 @@ export function Step2Prosessscoring({
         <div className="flex flex-col items-end gap-1">
           <Button
             onClick={handleNeste}
-            disabled={!allTabsOpened || !weightsValid || saving}
+            disabled={!isReadOnly && (!allTabsOpened || !weightsValid) || saving}
             className="bg-[#10B981] hover:bg-[#059669] text-white disabled:opacity-50"
           >
             {saving ? 'Lagrar...' : 'Neste steg →'}
