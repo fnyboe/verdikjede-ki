@@ -68,14 +68,12 @@ export default async function DashboardPage() {
                   })}
                 </p>
               </div>
-              {!isAdmin && (
-                <Link
-                  href={`/analyse/${analyse.id}/steg/1`}
-                  className="text-sm text-[#3B82F6] hover:underline"
-                >
-                  Opne →
-                </Link>
-              )}
+              <Link
+                href={`/analyse/${analyse.id}/steg/1`}
+                className="text-sm text-[#3B82F6] hover:underline"
+              >
+                Opne →
+              </Link>
             </div>
           ))}
         </div>
