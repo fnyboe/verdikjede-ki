@@ -425,6 +425,7 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
             <div className="flex flex-col gap-1.5">
               <p className="text-sm text-slate-500">Her er prosessane du tok med vidare frå den objektive vurderinga i steg 2. Score frå steg 2 er vist i parentes.</p>
               <p className="text-sm text-slate-500">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
+              <p className="text-sm text-slate-500">Nedanfor ser du verdikjedestega du definerte i steg 1 (fanene øvst). Innanfor kvart verdikjedesteg finn du prosessane som vart tekne med vidare frå steg 2. Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
             </div>
 
             {/* vc_step tab navigation */}
@@ -554,18 +555,18 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                             <div className="grid gap-x-3 gap-y-2 items-start" style={{ gridTemplateColumns: '175px 1fr' }}>
                               {(
                                 [
-                                  { field: 'problem_desc' as const, label: 'Problem som skal løses', placeholder: isAiLoading ? 'Genererer...' : 'Kva er utfordringa?', rows: 2 },
-                                  { field: 'usecase_desc' as const, label: 'KI-brukstilfelle', placeholder: isAiLoading ? 'Genererer KI-idéar...' : 'Idé for KI-løysing', rows: 3 },
+                                  { field: 'problem_desc' as const, label: 'Problem som skal løses', placeholder: isAiLoading ? 'Genererer...' : 'Kva er utfordringa?', rows: 4, minH: 'min-h-[6rem]' },
+                                  { field: 'usecase_desc' as const, label: 'KI-brukstilfelle', placeholder: isAiLoading ? 'Genererer KI-idéar...' : 'Idé for KI-løysing', rows: 6, minH: 'min-h-[9rem]' },
                                   { field: 'business_goal' as const, label: 'Forretningsmål', placeholder: 'Beskriv forretningsmålet', rows: 1, tip: "Beskriv kva bedrifta ønskjer å oppnå med denne KI-løysinga. Eks: 'Redusere tid brukt på manuell sortering med 50%' eller 'Auke nøyaktigheit i kvalitetskontroll til over 99%'." },
                                   { field: 'key_results' as const, label: 'Nøkkelresultat', placeholder: '3–5 målbare nøkkelresultat', rows: 1, tip: "List 3–5 målbare resultat som viser at forretningsmålet er nådd. Eks: 'Sorteringstid redusert frå 4 timar til 30 min', 'Feilrate under 1%', 'Kostnad per eining redusert med 20%'." },
                                   { field: 'responsible' as const, label: 'Ansvarleg', placeholder: 'Rolle, namn, avdeling', rows: 1, tip: "Kven i bedrifta har ansvar for å følgje opp og gjennomføre denne KI-satsinga? Eks: 'Produksjonsleiar', 'IT-sjef' eller 'Prosjektleiar KI'. Tydeleg eigarskap aukar sjansen for vellukka implementering." },
-                                ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; placeholder: string; rows: number; tip?: string }[]
-                              ).map(({ field, label, placeholder, rows, tip }) => (
+                                ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; placeholder: string; rows: number; tip?: string; minH?: string }[]
+                              ).map(({ field, label, placeholder, rows, tip, minH }) => (
                                 <>
                                   {tip ? (
                                     <div key={`${field}-label`} className="relative group pt-1.5">
                                       <span className="text-sm text-slate-600 font-semibold cursor-help underline decoration-dotted decoration-slate-400">{label}</span>
-                                      <div className="absolute left-0 top-6 z-50 hidden group-hover:block w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-xs text-slate-600 leading-relaxed">
+                                      <div className="absolute left-0 bottom-full mb-1 z-50 hidden group-hover:block w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-xs text-slate-600 leading-relaxed">
                                         {tip}
                                       </div>
                                     </div>
@@ -581,7 +582,7 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                                     onBlur={() => handleAutoSave(process.id)}
                                     onInput={e => { e.currentTarget.style.height = 'auto'; e.currentTarget.style.height = e.currentTarget.scrollHeight + 'px' }}
                                     disabled={isReadOnly}
-                                    className="px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden disabled:bg-slate-50 disabled:text-slate-400"
+                                    className={`px-2.5 py-1.5 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-[#10B981] resize-none leading-relaxed w-full overflow-hidden disabled:bg-slate-50 disabled:text-slate-400${minH ? ` ${minH}` : ''}`}
                                     style={{ background: isReadOnly ? undefined : isAiLoading && (field === 'problem_desc' || field === 'usecase_desc') ? '#F0F4FF' : '#FAFBFC' }}
                                   />
                                 </>
