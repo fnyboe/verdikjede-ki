@@ -5,6 +5,18 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/db/users'
 import type { ServerActionResult } from '@/types'
 
+export async function deleteAnalyseAction(analyseId: string): Promise<ServerActionResult> {
+  const profileResult = await getCurrentProfile()
+  if (!profileResult.success || !profileResult.data) return { success: false, error: 'Ikkje innlogga' }
+  if (profileResult.data.role === 'admin') return { success: false, error: 'Admin kan ikkje slette analysar' }
+
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase.from('analyses').delete().eq('id', analyseId)
+
+  if (error) return { success: false, error: 'Kunne ikkje slette analysen: ' + error.message }
+  return { success: true }
+}
+
 export async function inviteMember(
   _prev: unknown,
   formData: FormData

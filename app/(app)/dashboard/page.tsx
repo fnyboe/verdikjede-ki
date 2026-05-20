@@ -1,6 +1,7 @@
 import { getAnalysesByCompany, getAllAnalyses } from '@/lib/db/analyses'
 import { getCurrentProfile } from '@/lib/db/users'
 import { InviteMemberForm } from './InviteMemberForm'
+import { DeleteAnalyseButton } from './DeleteAnalyseButton'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Analysis } from '@/types'
@@ -68,12 +69,17 @@ export default async function DashboardPage() {
                   })}
                 </p>
               </div>
-              <Link
-                href={`/analyse/${analyse.id}/steg/1`}
-                className="text-sm text-[#3B82F6] hover:underline"
-              >
-                Opne →
-              </Link>
+              <div className="flex items-center gap-2">
+                {!isAdmin && (
+                  <DeleteAnalyseButton analyseId={analyse.id} analyseTitle={analyse.title} />
+                )}
+                <Link
+                  href={`/analyse/${analyse.id}/steg/1`}
+                  className="text-sm text-[#3B82F6] hover:underline"
+                >
+                  Opne →
+                </Link>
+              </div>
             </div>
           ))}
         </div>
