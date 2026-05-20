@@ -419,7 +419,7 @@ export function Step2Prosessscoring({
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
             <div>
               <h3 className="text-base font-bold text-[#1E293B]">Definer prosessar</h3>
-              <p className="text-sm text-slate-500">Legg til prosessane for kvart verdikjedesteg og gi dei score. KI-forslag kjem automatisk når du vel eit steg.</p>
+              <p className="text-sm text-slate-500">For kvart verdikjedesteg (fanene øvst) legg du til dei viktigaste prosessane og scorar dei på fem dimensjonar. Scoren avgjer kva prosessar som vert tilrådd vidare til neste steg. KI-forslag til prosessar kjem automatisk når du vel eit steg.</p>
             </div>
           </div>
         </div>
