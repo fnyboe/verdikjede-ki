@@ -562,7 +562,10 @@ export function Step2Prosessscoring({
           <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">B</span>
           <div>
             <h3 className="text-base font-bold text-[#1E293B]">Vekting av variablar</h3>
-            <p className="text-sm text-slate-500">Fordel 100 poeng mellom variablane. Hald over variabelnamnet for forklaring.</p>
+            <p className="text-sm text-slate-500">
+              Fordel 100 poeng mellom variablane for å bestemme kva som betyr mest for di bedrift. Ein variabel med 40 poeng tel dobbelt så mykje som ein med 20 poeng når prosessane blir rangert. Totalen må vere nøyaktig 100. Legg du til ein ny variabel, hugs å gå tilbake til kvar prosess og gi score på den nye variabelen.{' '}
+              <strong>Hald over variabelnamnet for forklaring.</strong>
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">

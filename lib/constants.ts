@@ -3,11 +3,11 @@ import type { Dim, BxtCat, Strat } from '@/types'
 export const PLOT_COLORS: string[] = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
 export const DIMS: Dim[] = [
-  { key: 'operational', label: 'Potensial', tip: 'Variabler:\n• Volum (antall transaksjoner/hendelser)\n• Frekvens (daglig, ukentlig, sporadisk)\n• Kost per enhet / tidsbruk\n• Grad av manuelt arbeid\n👉 Høy score = godt automasjonskandidatur' },
-  { key: 'process', label: 'Prosesskarakter', tip: 'Variabler:\n• Regelbasert vs. skjønnsbasert\n• Variasjon i input\n• Standardisering av prosess\n• Antall unntak\n👉 Mer struktur = lettere AI/automatisering' },
-  { key: 'data', label: 'Data', tip: 'Variabler:\n• Finnes data allerede?\n• Datakvalitet (komplett, korrekt, historisk)\n• Digital vs. analog input\n• Datatilgang på tvers av systemer\n👉 Uten data → ikke AI' },
-  { key: 'risk', label: 'Risiko', tip: 'Variabler:\n• Konsekvens av feil\n• Regulatorisk sensitivitet\n• Etisk / tillitsmessig risiko\n• Kunde- eller sikkerhetspåvirkning\n👉 Høy score = lav risiko' },
-  { key: 'change', label: 'Endring', tip: 'Variabler:\n• Antall roller involvert\n• Fagforening / compliance\n• Kompetansegap\n• Avhengighet til andre initiativ\n👉 Høy score = lav organisatorisk motstand' },
+  { key: 'operational', label: 'Potensial', tip: 'Prosessar med høgt volum, høg frekvens og mykje manuelt arbeid får høgare score – jo meir repetitivt og tidkrevjande, jo betre eignar det seg for KI' },
+  { key: 'process', label: 'Prosesskarakter', tip: 'Prosessar som følgjer faste reglar og er godt standardiserte får høgare score – prosessar som krev skjønn og fagleg vurdering er vanskelegare å automatisere' },
+  { key: 'data', label: 'Data', tip: 'Prosessar der det finst mykje digitale data av høg kvalitet får høgare score – utan gode data kan KI ikkje lærast opp eller ta avgjersler' },
+  { key: 'risk', label: 'Risiko', tip: 'Prosessar der feil får store konsekvensar eller der det er høg sannsynlegheit for feil (regulatorisk, etisk, kundetillit) får lågare score – låg risiko og låg sannsynlegheit for feil gir høgare score' },
+  { key: 'change', label: 'Endring', tip: 'Prosessar som er enkle å endre organisatorisk får høgare score – mange roller, kompetansegap eller motstand gir lågare score' },
 ]
 
 export const BXT_CATS: BxtCat[] = [
