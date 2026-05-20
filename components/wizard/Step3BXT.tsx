@@ -422,10 +422,8 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
               <h3 className="text-base font-bold text-[#1E293B]">Vurder kvar prosess</h3>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-sm text-slate-500">Her er prosessane du tok med vidare frå den objektive vurderinga i steg 2. Score frå steg 2 er vist i parentes.</p>
-              <p className="text-sm text-slate-500">Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
-              <p className="text-sm text-slate-500">Nedanfor ser du verdikjedestega du definerte i steg 1 (fanene øvst). Innanfor kvart verdikjedesteg finn du prosessane som vart tekne med vidare frå steg 2. Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
+            <div>
+              <p className="text-sm text-slate-500">Fanene øvst viser verdikjedestega frå steg 1. Innanfor kvart steg finn du prosessane frå steg 2 – talet i parentes viser gjennomsnittsscore frå steg 2. Opne kvar prosess for KI-genererte forslag og sett score på KI-eignetheit.</p>
             </div>
 
             {/* vc_step tab navigation */}
