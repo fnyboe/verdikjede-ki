@@ -399,7 +399,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps, isReadOnly }:
                                   />
                                   <ScoreSelect
                                     label="Auto"
-                                    tip={'Automatiseringsgrad\n1 = minimalt kan automatiserast\n5 = fullt automatiserbart'}
+                                    tip={'Automatiseringsgrad: 1 = minimalt kan automatiserast, 5 = fullt automatiserbart'}
                                     value={task.automation}
                                     onChange={v => handleUpdateTaskLocal(task.id, process.id, 'automation', v)}
                                     onBlur={() => handleSaveTask(task.id, process.id)}
@@ -407,7 +407,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps, isReadOnly }:
                                   />
                                   <ScoreSelect
                                     label="Forb."
-                                    tip={'Forbetringspotensial\n1 = liten forbetring\n5 = svært stor forbetring'}
+                                    tip={'Forbetringspotensial: 1 = liten forbetring, 5 = svært stor forbetring'}
                                     value={task.improvement}
                                     onChange={v => handleUpdateTaskLocal(task.id, process.id, 'improvement', v)}
                                     onBlur={() => handleSaveTask(task.id, process.id)}
