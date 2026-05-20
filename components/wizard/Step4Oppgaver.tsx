@@ -301,7 +301,7 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps, isReadOnly }:
               <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#1E293B] text-white text-sm font-bold shrink-0">A</span>
               <div>
                 <h3 className="text-base font-bold text-[#1E293B]">Oppgåver per prosess</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Opne kvar verdikjede og prosess for å generere KI-forslag til oppgåver. Rediger eller slett etter behov.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Fanene øvst viser verdikjedestega frå steg 1. Innanfor kvart steg finn du prosessane med KI-genererte oppgåveforslag. Opne kvar prosess for å sjå, redigere eller slette oppgåver.</p>
               </div>
             </div>
 
@@ -518,13 +518,13 @@ export function Step4Oppgaver({ analyseId, analysisTitle, vcSteps, isReadOnly }:
                       <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-28">
                         <ThTooltip
                           label="Automatisering"
-                          tip="Standardisering, grad av regelstyring, variasjon i input, behov for menneskelig involvering, datatilgang og kvalitet"
+                          tip="Vurderer kor godt oppgåva eignar seg for automatisering. Høg score betyr at oppgåva er standardisert, regelbasert og har god datatilgang – og kan utførast med minimal manuell inngripen."
                         />
                       </th>
                       <th className="text-center py-2 pr-3 font-semibold text-slate-600 w-24">
                         <ThTooltip
                           label="Forbedring"
-                          tip="Tidsbruk per utførelse, kostnad per utførelse, hyppighet/volum, feilrate/omarbeid, belastning på ansatte"
+                          tip="Vurderer potensialet for forbetring samanlikna med dagens løysing. Høg score betyr vesentleg reduksjon i tidsbruk, kostnad, feilrate eller belastning på tilsette."
                         />
                       </th>
                       <th className="text-center py-2 pr-4 font-semibold text-slate-600 w-14">Score</th>
