@@ -130,6 +130,15 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis, isReadO
     setSteg((prev) => prev.filter((_, idx) => idx !== i))
   }
 
+  function flyttSteg(i: number, retning: 'opp' | 'ned') {
+    const j = retning === 'opp' ? i - 1 : i + 1
+    setSteg((prev) => {
+      const ny = [...prev]
+      ;[ny[i], ny[j]] = [ny[j], ny[i]]
+      return ny
+    })
+  }
+
   function leggTilSteg() {
     setSteg((prev) => [...prev, { name: '' }])
   }
@@ -309,6 +318,22 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis, isReadO
         <div className="flex flex-col gap-2">
           {steg.map((s, i) => (
             <div key={i} className="flex items-center gap-2">
+              {!isReadOnly && (
+                <div className="flex flex-col shrink-0">
+                  <button
+                    onClick={() => flyttSteg(i, 'opp')}
+                    disabled={i === 0}
+                    className="text-slate-300 hover:text-slate-500 disabled:opacity-20 disabled:cursor-default leading-none text-xs"
+                    title="Flytt opp"
+                  >▲</button>
+                  <button
+                    onClick={() => flyttSteg(i, 'ned')}
+                    disabled={i === steg.length - 1}
+                    className="text-slate-300 hover:text-slate-500 disabled:opacity-20 disabled:cursor-default leading-none text-xs"
+                    title="Flytt ned"
+                  >▼</button>
+                </div>
+              )}
               <span className="text-xs font-bold text-slate-400 w-6 text-right shrink-0">{i + 1}</span>
               <input
                 type="text"
