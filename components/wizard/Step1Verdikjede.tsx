@@ -155,8 +155,8 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis, isReadO
     <div className="flex flex-col gap-6">
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-5">
         <div>
-          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Om selskapet</h2>
-          <p className="text-sm text-slate-500">Fyll inn informasjon om selskapet så KI kan foreslå verdikjedesteg.</p>
+          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Kva er Verdikjede KI-analyse?</h2>
+          <p className="text-sm text-slate-500">Denne applikasjonen vil gi di bedrift ein god indikasjon på kva prosessar og oppgåver di bedrift har størst potensial for å utnytte KI, og dermed hjelpe di bedrift å prioritere KI-satsingar. På slutten vil du motta ein rapport som oppsummerer arbeidet.</p>
         </div>
 
         {/* Namn på bedrift */}
@@ -259,7 +259,50 @@ export function Step1Verdikjede({ analyseId, eksisterendeSteg, analysis, isReadO
 
       <div className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col gap-4">
         <div>
-          <h2 className="text-base font-semibold text-[#1E293B] mb-1">Verdikjedesteg</h2>
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-base font-semibold text-[#1E293B]">Verdikjedesteg</h2>
+            <div className="relative group">
+              <span className="text-sm font-semibold italic text-[#3B82F6] cursor-help">
+                Kva er ein verdikjede – eksempel
+              </span>
+              <div className="absolute left-0 top-6 z-50 hidden group-hover:block w-[560px] bg-white border border-slate-200 rounded-xl shadow-lg p-4">
+                <p className="text-sm text-slate-600 mb-3">
+                  Ei verdikjede beskriv dei hovudstega som skaper verdi i verksemda di.
+                  Vel overordna fasar, ikkje enkeltoppgåver. Sikt på 4–8 steg totalt.
+                </p>
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <th className="text-left px-2 py-1.5 font-semibold text-slate-700 border border-slate-200 whitespace-nowrap">Bransje</th>
+                      <th className="text-left px-2 py-1.5 font-semibold text-slate-700 border border-slate-200">Eksempel på verdikjedesteg</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-700 whitespace-nowrap align-top">Havbruk</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-600">Stamfisk → Klekkeri → Settefisk → Matfisk → Slakting → Foredling → Distribusjon</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-700 whitespace-nowrap align-top">Rekrutteringsbyrå</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-600">Prospektering → Sal → Kandidatsøk → Intervju → Plassering → Oppfølging</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-700 whitespace-nowrap align-top">Nettbutikk</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-600">Innkjøp → Lagring → Marknadsføring → Sal → Levering → Kundeservice → Retur</td>
+                    </tr>
+                    <tr className="bg-slate-50">
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-700 whitespace-nowrap align-top">Konsulent/inkubator</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-600">Rekruttering → Onboarding → Rådgiving → Finansiering → Vekst → Exit</td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-700 whitespace-nowrap align-top">Prosessindustri</td>
+                      <td className="px-2 py-1.5 border border-slate-200 text-slate-600">Råstoffinnkjøp → Kraftforsyning → Smelting → Raffinering → Kvalitetskontroll → Pakking → Eksport</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
           <p className="text-sm text-slate-500">Rediger, legg til eller fjern steg. Minimum 2 steg krevst.</p>
         </div>
 
