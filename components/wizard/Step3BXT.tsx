@@ -556,13 +556,22 @@ const allIncludedOpened = processes.filter(p => p.included).every(p => openedPro
                                 [
                                   { field: 'problem_desc' as const, label: 'Problem som skal løses', placeholder: isAiLoading ? 'Genererer...' : 'Kva er utfordringa?', rows: 2 },
                                   { field: 'usecase_desc' as const, label: 'KI-brukstilfelle', placeholder: isAiLoading ? 'Genererer KI-idéar...' : 'Idé for KI-løysing', rows: 3 },
-                                  { field: 'business_goal' as const, label: 'Forretningsmål', placeholder: 'Beskriv forretningsmålet', rows: 1 },
-                                  { field: 'key_results' as const, label: 'Nøkkelresultat', placeholder: '3–5 målbare nøkkelresultat', rows: 1 },
-                                  { field: 'responsible' as const, label: 'Ansvarleg', placeholder: 'Rolle, namn, avdeling', rows: 1 },
-                                ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; placeholder: string; rows: number }[]
-                              ).map(({ field, label, placeholder, rows }) => (
+                                  { field: 'business_goal' as const, label: 'Forretningsmål', placeholder: 'Beskriv forretningsmålet', rows: 1, tip: "Beskriv kva bedrifta ønskjer å oppnå med denne KI-løysinga. Eks: 'Redusere tid brukt på manuell sortering med 50%' eller 'Auke nøyaktigheit i kvalitetskontroll til over 99%'." },
+                                  { field: 'key_results' as const, label: 'Nøkkelresultat', placeholder: '3–5 målbare nøkkelresultat', rows: 1, tip: "List 3–5 målbare resultat som viser at forretningsmålet er nådd. Eks: 'Sorteringstid redusert frå 4 timar til 30 min', 'Feilrate under 1%', 'Kostnad per eining redusert med 20%'." },
+                                  { field: 'responsible' as const, label: 'Ansvarleg', placeholder: 'Rolle, namn, avdeling', rows: 1, tip: "Kven i bedrifta har ansvar for å følgje opp og gjennomføre denne KI-satsinga? Eks: 'Produksjonsleiar', 'IT-sjef' eller 'Prosjektleiar KI'. Tydeleg eigarskap aukar sjansen for vellukka implementering." },
+                                ] as { field: keyof Omit<BxtEntry, 'bxt_scores'>; label: string; placeholder: string; rows: number; tip?: string }[]
+                              ).map(({ field, label, placeholder, rows, tip }) => (
                                 <>
-                                  <span key={`${field}-label`} className="text-sm text-slate-600 font-semibold pt-1.5">{label}</span>
+                                  {tip ? (
+                                    <div key={`${field}-label`} className="relative group pt-1.5">
+                                      <span className="text-sm text-slate-600 font-semibold cursor-help underline decoration-dotted decoration-slate-400">{label}</span>
+                                      <div className="absolute left-0 top-6 z-50 hidden group-hover:block w-72 bg-white border border-slate-200 rounded-xl shadow-lg p-3 text-xs text-slate-600 leading-relaxed">
+                                        {tip}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span key={`${field}-label`} className="text-sm text-slate-600 font-semibold pt-1.5">{label}</span>
+                                  )}
                                   <textarea
                                     key={`${field}-input`}
                                     rows={rows}
