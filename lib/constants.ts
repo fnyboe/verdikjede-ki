@@ -52,7 +52,7 @@ export const STRATS: Record<string, Strat> = {
   },
   focused: {
     title: 'Fokusert differensiering', sub: 'Spiss fortrinnet', color: '#F59E0B', bg: '#FEF3C7',
-    desc: 'Begrenset kontroll og få teknologier. Spiss KI mot høyverdiprosesser.',
+    desc: 'Avgrensa kontroll over heile verdikjeda og få teknologiar. Spiss KI mot høgverdiprosessar.',
     actions: ['Finn 2-3 kjerneprosesser', 'Kjøp SaaS for standard', 'Fokuser på domeneforståelse', 'Start med pilotprosjekter', 'Bruk nisjeverktøy'],
   },
   vertical: {

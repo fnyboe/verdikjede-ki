@@ -113,7 +113,7 @@ export function Step5Strategi({ analyseId, analysisTitle, analysis, initialTasks
         {/* Spørsmål 1 */}
         <div className="flex flex-col gap-2">
           <p className="text-sm font-semibold text-[#1E293B]">Verdikjedekontroll</p>
-          <p className="text-xs text-slate-500">I kva grad kontrollerer de heile verdikjeda – frå råvare til sluttbrukar?</p>
+          <p className="text-xs text-slate-500">I kva grad kontrollerer de heile verdikjeda – frå råvare til sluttbrukar? (ikkje berre di eiga interne verdikjede)</p>
           <div className="flex gap-3 flex-wrap">
             {(['low', 'high'] as const).map(v => (
               <button
